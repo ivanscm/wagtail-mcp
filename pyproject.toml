@@ -30,8 +30,15 @@ dependencies = [
     "django>=5.2",
     # https://github.com/wagtail/wagtail/wiki/Release-schedule
     # https://docs.wagtail.org/en/latest/releases/upgrading.html#compatible-django-python-versions
-    "wagtail>=7.0",
+    "wagtail>=8.0",
+    "mcp==2.0.0",  # pinned exactly; matches vendored SDK (v2.0.0-21) used for reference in local/deps. Bumps are deliberate CHANGELOG entries.
 ]
+
+# PyPI has no stable wagtail>=8.0 yet (only 8.0rc2), so point the local
+# resolution at the sibling checkout that ships the v3 API these tools call.
+# Published floor stays `wagtail>=8.0`; this override is dev-only.
+[tool.uv.sources]
+wagtail = { path = "../wagtail" }
 
 [project.urls]
 Homepage = "https://github.com/org-name-or-username/wagtail-mcp"
@@ -71,3 +78,4 @@ source-exclude = [
 
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "wagtail_mcp.test.settings"
+testpaths = ["tests", "src/wagtail_mcp/test/tests"]

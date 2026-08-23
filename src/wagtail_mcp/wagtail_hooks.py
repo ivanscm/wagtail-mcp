@@ -1,7 +1,8 @@
 from django.urls import include, path
 from django.views.i18n import JavaScriptCatalog
-from wagtail import hooks
 from wagtail.admin.site_summary import SummaryItem
+
+from wagtail import hooks
 
 
 class WagtailMcpSummaryItem(SummaryItem):
