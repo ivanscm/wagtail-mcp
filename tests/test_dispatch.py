@@ -31,6 +31,10 @@ def test_operation_map_known_ids():
     assert ops["pages_create"] == ("post", "pages/")
     assert ops["pages_detail"] == ("get", "pages/{page_id}/")
     assert ops["images_create"][0] == "post"
+    # The locales router is mounted only when ``wagtail.locales`` is installed;
+    # this pins that the test settings include it (regression for task 6 review).
+    assert "locales_list" in ops
+    assert "locales_detail" in ops
 
 
 def test_call_operation_get_with_query(root_page, token):

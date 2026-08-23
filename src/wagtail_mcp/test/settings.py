@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     "wagtail.contrib.routable_page",
     "wagtail.contrib.styleguide",
     "wagtail.sites",
+    "wagtail.locales",
     "wagtail.api.v3",
     "wagtail",
     "taggit",

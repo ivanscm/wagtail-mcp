@@ -68,9 +68,9 @@ def test_api_schema_unknown_component_is_error(client, token):
 
 @pytest.mark.django_db(transaction=True)
 def test_api_call_escape_hatch(client, token):
-    # sites_list is a real read-only operation on this project (the locales
-    # router is not mounted in the test app).
-    result = call_tool(client, token, "api_call", operation_id="sites_list")
+    # locales_list is a real read-only operation, mounted once wagtail.locales
+    # is in INSTALLED_APPS (regression-pinned in test_dispatch).
+    result = call_tool(client, token, "api_call", operation_id="locales_list")
     assert result["count"] >= 0
 
 
