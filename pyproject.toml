@@ -21,7 +21,7 @@ classifiers = [
     "Framework :: Django :: 5.2",
     "Framework :: Django :: 6.0",
     "Framework :: Wagtail",
-    "Framework :: Wagtail :: 7",
+    "Framework :: Wagtail :: 8",
 ]
 # See: https://devguide.python.org/versions/#supported-versions
 requires-python = ">=3.10"
@@ -31,6 +31,9 @@ dependencies = [
     # https://github.com/wagtail/wagtail/wiki/Release-schedule
     # https://docs.wagtail.org/en/latest/releases/upgrading.html#compatible-django-python-versions
     "wagtail>=8.0",
+    # django-ninja arrives transitively via Wagtail (the v3 API it ships is built on it).
+    # wagtail-mcp dispatches tools through django-ninja's in-process TestClient, so the
+    # ninja floor is effectively pinned by Wagtail's requirement — coordinate any bump there.
     "mcp==2.0.0",  # pinned exactly; matches vendored SDK (v2.0.0-21) used for reference in local/deps. Bumps are deliberate CHANGELOG entries.
 ]
 
