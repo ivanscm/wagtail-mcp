@@ -25,6 +25,37 @@ def post(client, payload, token=None):
     return client.post("/mcp/", json.dumps(payload), **headers)
 
 
+def tools_call_payload(name, arguments=None, request_id=3):
+    """Build a JSON-RPC ``tools/call`` payload for a tool call."""
+    return {
+        "jsonrpc": "2.0",
+        "id": request_id,
+        "method": "tools/call",
+        "params": {"name": name, "arguments": arguments or {}},
+    }
+
+
+def call_tool(client, token, name, request_id=10, **arguments):
+    """Call a tool over the /mcp/ endpoint and return its parsed result.
+
+    Prefers ``structuredContent`` when the SDK returns it (dict-returning tools
+    do); otherwise parses the single text content block as JSON.
+    """
+    result = call_tool_raw(client, token, name, request_id=request_id, **arguments)
+    assert result.get("isError") is False, result
+    if "structuredContent" in result:
+        return result["structuredContent"]
+    text = result["content"][0]["text"]
+    return json.loads(text) if text else None
+
+
+def call_tool_raw(client, token, name, request_id=10, **arguments):
+    """Call a tool over the /mcp/ endpoint and return the full CallToolResult dict."""
+    response = post(client, tools_call_payload(name, arguments, request_id), token)
+    assert response.status_code == 200, response.content
+    return response.json()["result"]
+
+
 @pytest.mark.django_db
 def test_initialize_and_tools_list(client, token):
     response = post(client, INIT, token)
@@ -32,7 +63,15 @@ def test_initialize_and_tools_list(client, token):
     result = response.json()["result"]
     assert result["serverInfo"]["name"] == "wagtail-mcp"
     response = post(client, TOOLS_LIST, token)
-    assert response.json()["result"]["tools"] == []  # zero tools until Task 6
+    tools = response.json()["result"]["tools"]
+    names = {tool["name"] for tool in tools}
+    assert names == {
+        "whoami",
+        "schema_list",
+        "schema_detail",
+        "api_schema",
+        "api_call",
+    }
 
 
 @pytest.mark.django_db

@@ -1,14 +1,19 @@
 from mcp.server.mcpserver import MCPServer
 
 
-def register_all(server: MCPServer) -> None:
-    """Register every tool module's tools onto the MCP server.
+def _tool_modules():
+    """Import tool modules lazily to avoid import cycles with dispatch/common.
 
-    Task 6+ appends modules to the ``_MODULES`` tuple and each module
-    implements ``register(server)``. For now there are no tool modules, so the
-    server exposes an empty tool list. ``register_all`` must only ever *append*,
-    preserving entries added by earlier tasks.
+    Return the modules whose ``register(server)`` contributes tools. Modules
+    are appended by later tasks; ``register_all`` always appends, preserving
+    entries added by earlier tasks.
     """
-    _MODULES: tuple = ()
-    for module in _MODULES:
+    from wagtail_mcp.tools import meta
+
+    return [meta]
+
+
+def register_all(server: MCPServer) -> None:
+    """Register every tool module's tools onto the MCP server."""
+    for module in _tool_modules():
         module.register(server)
