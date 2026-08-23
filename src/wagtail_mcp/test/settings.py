@@ -159,3 +159,9 @@ MEDIA_ROOT = os.path.join(BASE_DIR, "test-media")
 # Wagtail settings
 
 WAGTAIL_SITE_NAME = "Wagtail MCP test site"
+
+# WAGTAILAPI_BASE_URL is set so in-process Ninja TestClient responses can
+# resolve relative links (e.g. meta.detail_url) without asking the Mock request
+# for a real host/port (which the test client cannot provide). Matches how
+# Wagtail's own v3 API tests configure the API.
+WAGTAILAPI_BASE_URL = "https://example.com"
