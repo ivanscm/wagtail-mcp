@@ -88,6 +88,16 @@ def test_initialize_and_tools_list(client, token):
         "pages_actions_copy_for_translation",
         "pages_revisions_list",
         "pages_revisions_detail",
+        "images_list",
+        "images_detail",
+        "images_create",
+        "images_update",
+        "images_delete",
+        "documents_list",
+        "documents_detail",
+        "documents_create",
+        "documents_update",
+        "documents_delete",
     }
 
 

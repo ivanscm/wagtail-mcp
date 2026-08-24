@@ -1,0 +1,117 @@
+"""Document tools for the Wagtail v3 API.
+
+Thin wrappers over ``dispatch.call_operation`` that flatten create/update
+arguments and shape document responses for agents. Uploads arrive as base64
+and are decoded + MIME-typed by ``tools.common.decode_upload``.
+"""
+
+from wagtail_mcp import dispatch
+from wagtail_mcp.tools.common import (
+    DESTRUCTIVE,
+    READ_ONLY,
+    WRITE,
+    decode_upload,
+    shape_list,
+    trim,
+    wagtail_tool,
+)
+
+
+#: Document detail ``meta`` keys worth surfacing to an agent.
+DOCUMENT_META_KEYS = ("type", "detail_url", "download_url", "tags")
+
+
+def register(server):
+    @wagtail_tool(
+        server,
+        name="documents_list",
+        annotations=READ_ONLY,
+        description="List documents, optionally filtered by `search` (matches "
+        "title). Results are paginated: pass `limit`/`offset` and use "
+        "``next_offset``` from the response to get the next page.",
+    )
+    def documents_list(
+        search: str | None = None,
+        limit: int = 20,
+        offset: int = 0,
+    ) -> dict[str, object]:
+        query = {"limit": limit, "offset": offset}
+        if search is not None:
+            query["search"] = search
+        data = dispatch.call_operation("documents_list", query=query)
+        return shape_list(data, DOCUMENT_META_KEYS, limit=limit, offset=offset)
+
+    @wagtail_tool(
+        server,
+        name="documents_detail",
+        annotations=READ_ONLY,
+        description="Get one document's detail: title and URLs (``detail_url`` "
+        "and ``download_url``). Use the id from `documents_list`. Rich "
+        "metadata (tags) is exposed under ``meta``.",
+    )
+    def documents_detail(document_id: int) -> dict[str, object]:
+        data = dispatch.call_operation(
+            "documents_detail", path_params={"document_id": document_id}
+        )
+        return trim_document(data)
+
+    @wagtail_tool(
+        server,
+        name="documents_create",
+        annotations=WRITE,
+        description="Upload a new document. Provide the file contents as "
+        "base64 in `content_base64` with a `filename`; `content_type` is "
+        "inferred from the filename's extension (e.g. .pdf/.txt/.md) when "
+        "omitted. `title` labels it. Returns the created document's detail "
+        "(including its `download_url`).",
+    )
+    def documents_create(
+        title: str,
+        content_base64: str,
+        filename: str,
+        content_type: str | None = None,
+    ) -> dict[str, object]:
+        _, payload, mime = decode_upload(content_base64, filename, content_type)
+        data = dispatch.call_operation(
+            "documents_create",
+            form={"title": title},
+            files={"file": (filename, payload, mime)},
+        )
+        return trim_document(data)
+
+    @wagtail_tool(
+        server,
+        name="documents_update",
+        annotations=WRITE,
+        description="Update an existing document's title. Only the fields you "
+        "pass are changed (PATCH semantics via the v3 API). Requires the "
+        "document's id from `documents_list`/`documents_detail`. Returns the "
+        "updated document detail.",
+    )
+    def documents_update(document_id: int, title: str) -> dict[str, object]:
+        data = dispatch.call_operation(
+            "documents_update",
+            path_params={"document_id": document_id},
+            body={"title": title},
+        )
+        return trim_document(data)
+
+    @wagtail_tool(
+        server,
+        name="documents_delete",
+        annotations=DESTRUCTIVE,
+        description="Delete a document permanently. Irreversible; use "
+        'carefully. Returns `{"deleted": true, "document_id": ...}`.',
+    )
+    def documents_delete(document_id: int) -> dict[str, object]:
+        dispatch.call_operation(
+            "documents_delete", path_params={"document_id": document_id}
+        )
+        return {"deleted": True, "document_id": document_id}
+
+
+def trim_document(data):
+    """Trim a document detail response to the fields an agent needs."""
+    result = {k: data.get(k) for k in ("id", "title") if k in data}
+    result["meta"] = trim(data, DOCUMENT_META_KEYS)["meta"]
+    return result

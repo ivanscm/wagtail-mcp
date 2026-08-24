@@ -1,4 +1,5 @@
 import base64
+import binascii
 import functools
 
 from mcp.server.mcpserver.exceptions import ToolError
@@ -76,6 +77,58 @@ def shape_list(data, meta_keys, limit=None, offset=0):
     return {"count": count, "next_offset": next_offset, "items": items}
 
 
-def decode_upload(content_base64: str, filename: str, content_type: str):
-    """Decode a base64-encoded upload into ``(filename, bytes, content_type)``."""
-    return filename, base64.b64decode(content_base64), content_type
+#: Suffix → MIME type for uploads whose ``content_type`` is not supplied.
+#: Covers the image/document formats Wagtail's upload forms accept; anything
+#: else must be supplied explicitly by the caller.
+_EXTENSION_CONTENT_TYPES = {
+    ".gif": "image/gif",
+    ".jpeg": "image/jpeg",
+    ".jpg": "image/jpeg",
+    ".png": "image/png",
+    ".svg": "image/svg+xml",
+    ".webp": "image/webp",
+    ".txt": "text/plain",
+    ".md": "text/markdown",
+    ".markdown": "text/markdown",
+    ".pdf": "application/pdf",
+    ".csv": "text/csv",
+    ".json": "application/json",
+    ".doc": "application/msword",
+    ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+}
+
+
+def decode_upload(content_base64: str, filename: str, content_type: str | None = None):
+    """Decode a base64-encoded upload into ``(filename, bytes, content_type)``.
+
+    Validates that ``content_base64`` is well-formed, so a client sending a
+    corrupt payload gets a helpful error rather than a ``binascii`` traceback
+    mid-tool. When ``content_type`` is omitted it is inferred from ``filename``'s
+    extension; raises ``ToolError`` if the suffix is not recognised.
+    """
+    try:
+        payload = base64.b64decode(content_base64, validate=True)
+    except (binascii.Error, ValueError) as exc:
+        raise ToolError(
+            f"content_base64 is not valid base64: {exc}"
+            " — send the file contents encoded as base64 (not a URL or path)."
+        ) from exc
+
+    if content_type is None:
+        ext = _suffix(filename)
+        content_type = _EXTENSION_CONTENT_TYPES.get(ext)
+        if content_type is None:
+            raise ToolError(
+                f"Could not infer a content type from filename {filename!r}. "
+                "Pass `content_type` explicitly, or use a recognised extension "
+                "such as .png, .jpg, .pdf or .txt."
+            )
+    return filename, payload, content_type
+
+
+def _suffix(filename: str) -> str:
+    """Return the lowercase extension of ``filename`` including the dot."""
+    dot = filename.rfind(".")
+    if dot == -1:
+        return ""
+    return filename[dot:].lower()

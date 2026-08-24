@@ -8,9 +8,9 @@ def _tool_modules():
     are appended by later tasks; ``register_all`` always appends, preserving
     entries added by earlier tasks.
     """
-    from wagtail_mcp.tools import meta, pages
+    from wagtail_mcp.tools import documents, images, meta, pages
 
-    return [meta, pages]
+    return [meta, pages, images, documents]
 
 
 def register_all(server: MCPServer) -> None:
