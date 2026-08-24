@@ -92,4 +92,4 @@ def test_tool_inventory_counts_meta_tools(client, token):
         client, {"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}}, token
     )
     tools = response.json()["result"]["tools"]
-    assert len(tools) == 44
+    assert len(tools) == 60

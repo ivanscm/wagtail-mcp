@@ -133,6 +133,17 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = "en-us"
 
+# Locale the available languages for the v3 locales API. Only codes listed
+# here (plus any already-created locale) are valid for ``locales_create``/
+# ``locales_update``; the API rejects codes outside this set.
+WAGTAIL_CONTENT_LANGUAGES = [
+    ("en", "English"),
+    ("fr", "French"),
+    ("de", "German"),
+    ("pt", "Portuguese"),
+    ("es", "Spanish"),
+]
+
 WAGTAIL_I18N_ENABLED = True
 
 TIME_ZONE = "UTC"

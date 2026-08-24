@@ -110,6 +110,22 @@ def test_initialize_and_tools_list(client, token):
         "snippets_actions_unpublish",
         "snippets_actions_revert",
         "snippets_actions_copy_for_translation",
+        "redirects_list",
+        "redirects_find",
+        "redirects_detail",
+        "redirects_create",
+        "redirects_update",
+        "redirects_delete",
+        "sites_list",
+        "sites_detail",
+        "sites_create",
+        "sites_update",
+        "sites_delete",
+        "locales_list",
+        "locales_detail",
+        "locales_create",
+        "locales_update",
+        "locales_delete",
     }
 
 
