@@ -71,6 +71,9 @@ def test_initialize_and_tools_list(client, token):
         "schema_detail",
         "api_schema",
         "api_call",
+        "pages_list",
+        "pages_find",
+        "pages_detail",
     }
 
 

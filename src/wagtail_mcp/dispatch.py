@@ -1,28 +1,100 @@
 """In-process dispatch against the Wagtail v3 API ("client in code").
 
 Tool calls funnel through here: each call maps an ``operation_id`` to an
-HTTP method + path from the project's OpenAPI schema, then dispatches it
-against the mounted v3 ``NinjaAPI`` *without* going over the network. Ninja's
-in-process ``TestClient`` builds a real ``HttpRequest`` and runs the actual
-view — auth callbacks, permission checks, validation, action classes and the
-RFC 7807 error path all execute unchanged. The request is made as the user
-whose ``Authorization: Bearer`` token is forwarded, so v3 remains the single
-authority for authentication and permissions.
+HTTP method + path, then dispatches it against the project's mounted v3 API
+through Django's test ``Client`` — a real ``HttpRequest`` through the full
+request pipeline (auth callbacks, permission checks, exception handlers,
+action classes, response serialization), without going over the network. The
+request is made as the user whose ``Authorization: Bearer`` token is
+forwarded, so v3 remains the single authority for authentication and
+permissions.
+
+Django's test ``Client`` is used rather than django-ninja's ``TestClient``:
+the latter builds a request that Wagtail's page schemas cannot fully
+serialize in-process (page ``html_url`` resolution needs a request with a
+real host), while Django's client exercises the genuine WSGI-style path and
+handles redirects natively.
 """
 
 import functools
+import json
 
 from django.core.files.uploadedfile import SimpleUploadedFile
-from ninja.testing import TestClient
-from wagtail.api.v3.api import api
+from django.test import Client
 
 from wagtail_mcp import auth
 from wagtail_mcp.errors import APIError
 
 
-def _client() -> TestClient:
-    """A fresh Ninja test client bound to the project's v3 API instance."""
-    return TestClient(api)
+_json_dumps = json.dumps
+
+# URL mount prefix for the v3 API, e.g. "/api/v3/". Paths from the OpenAPI
+# schema are absolute (with this prefix); the test Client needs the full
+# mounted path, so we prepend it to the mount-stripped operation paths.
+MOUNT_PREFIX = "/api/v3/"
+
+
+class DjangoClient:
+    """Thin adapter over ``django.test.Client`` exposing a ``request``-style API.
+
+    Delegates to Django's typed verb methods (``get``/``post``/...) so redirects
+    are followed natively, and encodes query params into the URL path. The
+    ``request(method, path, data, json, query_params, headers, FILES)``
+    signature keeps the ``_client()`` seam that tests patch.
+    """
+
+    def __init__(self):
+        self._client = Client()
+
+    def request(
+        self,
+        method,
+        path,
+        data=None,
+        json=None,
+        query_params=None,
+        headers=None,
+        FILES=None,
+    ):
+        from urllib.parse import urlencode
+
+        verb = method.upper()
+        if verb not in {"GET", "POST", "PUT", "PATCH", "DELETE"}:
+            raise ValueError(f"Unsupported HTTP method {method!r}")
+        call = getattr(self._client, verb.lower())
+
+        if query_params:
+            qs = {k: v for k, v in query_params.items() if v is not None}
+            if qs:
+                sep = "&" if "?" in path else "?"
+                path = f"{path}{sep}{urlencode(qs)}"
+
+        client_kwargs = {}
+        if headers:
+            client_kwargs.update(
+                {
+                    f"HTTP_{name.upper().replace('-', '_')}": value
+                    for name, value in headers.items()
+                }
+            )
+        if json is not None:
+            client_kwargs["data"] = _json_dumps(json)
+            client_kwargs["content_type"] = "application/json"
+        elif data is not None or FILES:
+            # Django's test client has no ``files=`` kwarg: file uploads are
+            # passed inline in the ``data`` mapping as ``SimpleUploadedFile``
+            # values. Merge form fields and files into a single mapping.
+            merged = dict(data or {})
+            if FILES:
+                merged.update(FILES)
+            client_kwargs["data"] = merged
+
+        return call(path, follow=True, **client_kwargs)
+
+
+@functools.cache
+def _client() -> DjangoClient:
+    return DjangoClient()
 
 
 @functools.cache
@@ -32,7 +104,7 @@ def openapi() -> dict:
     Cache is cleared with ``openapi.cache_clear()``; use ``clear_caches()`` to
     clear all dispatch caches at once.
     """
-    response = _client().get("/openapi.json")
+    response = _client().request("GET", f"{MOUNT_PREFIX.rstrip('/')}/openapi.json")
     if response.status_code != 200:
         raise APIError(
             response.status_code,
@@ -45,68 +117,24 @@ def openapi() -> dict:
     return response.json()
 
 
-def _mount_prefix(paths):
-    """Return the URL mount prefix shared by most OpenAPI paths (e.g. ``/api/v3/``),
-    or ``""`` if none can be established.
-
-    OpenAPI paths are absolute (with the mount prefix, since that is how the
-    v3 API is served), but ``TestClient`` resolves against the *unmounted*
-    ``api.urls`` patterns, so the prefix must be stripped back before dispatch.
-
-    Robust scheme (chosen): compute the longest common leading path prefix
-    among the paths that share the **most common first segment**, ignoring any
-    path that does not share it. A single odd or absolute path therefore cannot
-    collapse the whole detection to ``""`` and silently break every dispatch —
-    the previous "common to ALL paths" approach had exactly that failure mode.
-    """
-    if not paths:
-        return ""
-    firsts = {}
-    for p in paths:
-        first = p.strip("/").split("/")[0]
-        firsts[first] = firsts.get(first, 0) + 1
-    if not firsts:
-        return ""
-    top = max(firsts, key=firsts.get)
-    segments = [p.strip("/").split("/") for p in paths if p.startswith("/" + top)]
-    if not segments:
-        return ""
-    prefix = []
-    for i, seg in enumerate(segments[0]):
-        if all(len(other) > i and other[i] == seg for other in segments[1:]):
-            prefix.append(seg)
-        else:
-            break
-    return "/" + "/".join(prefix) if prefix else ""
-
-
 @functools.cache
 def operation_map() -> dict:
     """Map ``operation_id`` → ``(http_method, url_path)``.
 
-    Paths are stripped of the mount prefix so they resolve against Ninja's
-    in-process ``TestClient``. Derives the prefix lazily from the schema it is
-    already holding, so there is no stale import-time value.
+    Paths match the OpenAPI absolute paths (including the mount prefix), as
+    the Django test Client requires the full mounted URL.
     """
     schema = openapi()
-    prefix = _mount_prefix(list(schema["paths"]))
     result = {}
     for path, methods in schema["paths"].items():
-        resolver_path = path
-        if prefix and resolver_path.startswith(prefix):
-            resolver_path = resolver_path[len(prefix) :].lstrip("/")
         for method, spec in methods.items():
             if "operationId" in spec:
-                result[spec["operationId"]] = (method, resolver_path)
+                result[spec["operationId"]] = (method, path)
     return result
 
 
 def clear_caches() -> None:
-    """Invalidate every cached dispatch datum (OpenAPI schema + operation map).
-
-    Keeps ``openapi.cache_clear()`` working as the brief-pinned single-cache
-    clear, while allowing callers to purge the whole dispatch cache coherently.
-    """
+    """Invalidate every cached dispatch datum (OpenAPI schema + operation map)."""
     openapi.cache_clear()
     operation_map.cache_clear()
 
@@ -148,7 +176,7 @@ def call_operation(
         )
 
     try:
-        method, path_template = operation_map()[operation_id]
+        method, path = operation_map()[operation_id]
     except KeyError:
         raise APIError(
             400,
@@ -163,7 +191,7 @@ def call_operation(
         ) from None
 
     try:
-        path = path_template.format(**(path_params or {}))
+        path = path.format(**(path_params or {}))
     except KeyError as exc:
         raise APIError(
             400,

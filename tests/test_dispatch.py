@@ -25,11 +25,12 @@ def root_page():
 
 def test_operation_map_known_ids():
     ops = operation_map()
-    # Exact (method, path) after mount-prefix stripping:
-    # OpenAPI path is /api/v3/whoami/, stripped to whoami/.
-    assert ops["whoami"] == ("get", "whoami/")
-    assert ops["pages_create"] == ("post", "pages/")
-    assert ops["pages_detail"] == ("get", "pages/{page_id}/")
+    # Exact (method, path): paths match the OpenAPI absolute paths (including
+    # the /api/v3/ mount prefix) because the Django test client needs the full
+    # mounted URL.
+    assert ops["whoami"] == ("get", "/api/v3/whoami/")
+    assert ops["pages_create"] == ("post", "/api/v3/pages/")
+    assert ops["pages_detail"] == ("get", "/api/v3/pages/{page_id}/")
     assert ops["images_create"][0] == "post"
     # The locales router is mounted only when ``wagtail.locales`` is installed;
     # this pins that the test settings include it (regression for task 6 review).
@@ -93,6 +94,22 @@ def test_openapi_cached_and_clearable():
     assert first is openapi()
     openapi.cache_clear()
     assert openapi() is not first
+
+
+def test_pages_find_follows_redirect(root_page, token):
+    # pages_find returns a 302 to the page-detail URL (like any HTTP client).
+    hostname = "example.test"
+    Site.objects.create(hostname=hostname, root_page=root_page, is_default_site=True)
+    child = ContentPage(title="Found target", slug="found-target")
+    root_page.add_child(instance=child)
+    child.save_revision().publish()  # a published page is required for a live detail_url
+    data = call_operation(
+        "pages_find",
+        query={"html_path": "found-target/", "site": hostname},
+        token=token,
+    )
+    assert data["id"] == child.pk
+    assert data["meta"]["slug"] == "found-target"
 
 
 def test_pages_delete_returns_none(root_page, token):
@@ -218,6 +235,6 @@ def test_clear_caches_invalidates_all():
     clear_caches()
     assert openapi() is not first_schema
     assert operation_map() is not first_ops
-    assert operation_map()["whoami"] == ("get", "whoami/")
+    assert operation_map()["whoami"] == ("get", "/api/v3/whoami/")
     # Leave a warm cache behind for any trailing collection needs.
     operation_map()
