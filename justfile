@@ -81,4 +81,9 @@ shell:
     uv run ./demo/manage.py shell
 
 # Run the demo application.
-demo: migrate load_initial_data runserver
+demo: migrate load_initial_data create_demo_api_token runserver
+
+# Create (or refresh) the demo user's wagtail-mcp API token.
+# The plaintext is written to demo/.demo_token (gitignored).
+create_demo_api_token:
+    uv run ./demo/manage.py create_demo_api_token
