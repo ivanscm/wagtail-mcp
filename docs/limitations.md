@@ -67,11 +67,11 @@ What this means:
 - **Markdown image embeds are dropped.** Rich-text writes as Markdown do not
   preserve image embeds (the v3 sanitizer drops them silently); the workaround
   is a `db_html` body via `api_call` (see [escape-hatch](escape-hatch.md)).
-- **Per-mount prefix stripping.** wagtail-mcp detects the v3 API's mount prefix
-  from the OpenAPI schema to dispatch in-process. If every path in a schema
-  does not share a common leading segment, prefix detection degrades — in
-  practice the schema is always under one mount (`/api/v3/`,
-  `/api/v3-preview/`, …), so this is a latent edge rather than a live one.
+- **v3 API must be mounted at `/api/v3/`.** wagtail-mcp dispatches against the
+  v3 API mounted at exactly `/api/v3/` — it does not (yet) detect a different
+  mount prefix from the OpenAPI schema. A site that mounts the API at another
+  prefix (e.g. `/api/v3-preview/`) is unsupported today; automatic prefix
+  discovery is a possible future enhancement.
 - **Writable fields require `writable=True`.** Only `api_fields` marked
   `writable=True` appear in the v3 create/update schemas. A project whose
   content model exposes a field read-only on the API cannot write it through

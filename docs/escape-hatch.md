@@ -1,8 +1,9 @@
 # Escape hatch: `api_call` and `api_schema`
 
-The 58 curated tools wrap the 60 hand-picked operations an agent most often
-needs. Everything else in the v3 OpenAPI schema — and anything a future API
-release adds — remains reachable through two generic tools:
+The 58 operation-aligned tools (whose names match v3 `operation_id`s) cover the
+operations an agent most often needs; the two generic tools below — `api_call`
+and `api_schema` — make up the full 60-tool surface and reach anything else in
+the v3 OpenAPI schema, and anything a future API release adds.
 
 - **`api_call(operation_id, path_params?, query?, body?)`** — call *any* v3
   operation by its `operation_id`.

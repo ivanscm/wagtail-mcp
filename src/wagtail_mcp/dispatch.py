@@ -30,9 +30,11 @@ from wagtail_mcp.errors import APIError
 # pydantic schema default); Django's JSON encoder serializes those cleanly.
 _json_dumps = DjangoJSONEncoder().encode
 
-# URL mount prefix for the v3 API, e.g. "/api/v3/". Paths from the OpenAPI
-# schema are absolute (with this prefix); the test Client needs the full
-# mounted path, so we prepend it to the mount-stripped operation paths.
+# URL mount prefix for the v3 API. wagtail-mcp currently requires the v3 API
+# to be mounted at "/api/v3/" (no auto-detection). It is used to fetch the
+# OpenAPI document; operation paths are then dispatched using the schema's own
+# absolute paths, which already carry this prefix and which the test Client
+# needs intact.
 MOUNT_PREFIX = "/api/v3/"
 
 

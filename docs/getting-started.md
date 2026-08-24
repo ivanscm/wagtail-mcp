@@ -77,8 +77,9 @@ urlpatterns = [
 ]
 ```
 
-The v3 API can sit at any prefix (e.g. `/api/v3-preview/`); wagtail-mcp
-detects the mount prefix from the OpenAPI schema automatically.
+**Mount the v3 API at `/api/v3/`.** wagtail-mcp currently assumes this exact
+path (see [limitations](limitations.md): it does not yet detect the mount
+prefix). A different prefix such as `/api/v3-preview/` is not supported today.
 
 ## Create an API token
 
@@ -133,13 +134,30 @@ MCP clients send these by default.
 
 ## Smoke test
 
-With your server running:
+With your server running, obtain a token for your client (instead of typing a
+new one each test, reuse a stored token from your client config):
 
 ```bash
-TOKEN=$(
-  python -c "import sys; sys.path.insert(0, 'src'); import django; import os; os.environ.setdefault('DJANGO_SETTINGS_MODULE','demo.demo.settings.dev'); django.setup()"
-  # simpler: use the token your client config uses
-)
+# The demo writes a token to demo/.demo_token after `just demo`.
+TOKEN=$(cat demo/.demo_token)
+```
+
+Or create a fresh one via Wagtail's shell. Using the demo's settings (run this
+from the `demo/` directory, after `just demo` has created the `admin` user):
+
+```bash
+TOKEN=$(cd demo && uv run python manage.py shell -c "
+from django.contrib.auth import get_user_model
+from wagtail.models import APIToken
+user = get_user_model().objects.get(username='admin')
+_, token = APIToken.create_token(user=user, name='mcp-smoke')
+print(token)
+")
+```
+
+Then initialize the MCP handshake:
+
+```bash
 curl -s http://localhost:8000/mcp/ \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
