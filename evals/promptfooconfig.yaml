@@ -1,0 +1,198 @@
+# yaml-language-server: $schema=https://promptfoo.dev/config-schema.json
+
+# Agent-behavior eval for the wagtail-mcp MCP server: does a real model (DeepSeek
+# V4 Flash via the OpenCode SDK) actually USE the wagtail MCP tools, and do those
+# tools change real Wagtail CMS state?
+#
+# Two arms over identical prompts:
+#   - baseline: OpenCode, NO tools at all (`tools: {"*": false}`) — measures
+#     what the model can guess/say from memory. The wagtail MCP server is NOT
+#     configured in this arm (mcp config absent), so it genuinely has no CMS tools.
+#   - mcp: same model + the wagtail MCP server re-enabled (`wagtail_*: true`) —
+#     measures whether the tools are discovered and used to complete a real task.
+#
+# Grading is STATE-based, not prose-based: graders in evals/graders/state_checks.py
+# call the demo site's v3 API over HTTP and assert the CMS actually changed (a page
+# exists, an image was uploaded, a redirect was created...). This is what separates
+# "the model said it would" from "the model did". See evals/README.md.
+#
+# Requires:
+#   - `just eval-init` — installs promptfoo, @opencode-ai/sdk, the OpenCode CLI.
+#   - `just eval-setup` — resets the demo DB + creates a demo token.
+#   - `just demo` (or any runserver) running against the demo v3 API + /mcp/.
+#   - TENSORX_API_KEY (model + rubric grader run on TensorX), and
+#     WAGTAIL_DEMO_TOKEN + WAGTAIL_EVAL_RUN_ID.
+#   `just eval` sets OPENCODE_CONFIG=evals/opencode.json and exports the above.
+
+prompts:
+  - "{{prompt}}"
+
+# The OpenCode SDK provider takes its model list from the OPENCODE_CONFIG file
+# (evals/opencode.json). The `apiKey` below satisfies promptfoo's "is this
+# provider configured" check; the actual key is read by OpenCode from the
+# opencode.json provider block.
+providers:
+  - id: opencode:sdk
+    label: baseline
+    config:
+      &opencode_base
+      provider_id: tensorx
+      model: deepseek/deepseek-v4-flash-0731
+      apiKey: "{{ env.TENSORX_API_KEY }}"
+      # Baseline: no tools at all — no file access, no MCP. The wagtail server
+      # is intentionally NOT configured, so the model must answer from memory.
+      tools:
+        "*": false
+      permission: &baseline_permission
+        external_directory: deny
+      custom_agent: &agent
+        description: Wagtail CMS operations assistant
+        temperature: 0
+        # Mutating scenarios take several tool calls (schema → parent lookup →
+        # create → verify); give the agent enough steps to complete them.
+        steps: 20
+        prompt: >-
+          You are a developer's assistant operating a Wagtail CMS through its
+          CMS admin API tools. Complete the task the user gives you using the
+          tools available to you. Work step by step: read the schema or list
+          endpoints you need before creating or changing content, and prefer the
+          dedicated tools when one exists for the operation. Verify your work
+          with a read (list/find/detail) after a write where you can.
+          If you have no tools available at all, say clearly that you have no
+          tools and describe from memory what you would do — do not fabricate a
+          result or claim you performed a CMS operation you could not.
+          Always answer in brief prose addressed to the user.
+
+  - id: opencode:sdk
+    label: mcp
+    config:
+      <<: *opencode_base
+      # Re-enable ONLY the wagtail MCP tools (namespaced `wagtail_<tool>` by
+      # OpenCode), leaving file/system tools disabled so the model cannot read
+      # the repo or shell out — it must use the CMS tools.
+      tools:
+        "*": false
+        "wagtail_*": true
+      # Override the MCP server configuration for this arm: point the
+      # `wagtail` MCP server at the running demo site.
+      mcp:
+        wagtail:
+          type: remote
+          url: "{{ env.WAGTAIL_EVAL_BASE_URL | default('http://localhost:8000') }}/mcp/"
+          headers:
+            Authorization: "Bearer {{ env.WAGTAIL_DEMO_TOKEN }}"
+          timeout: 60000
+      permission: *baseline_permission
+
+# Agent runs are token-heavy; a provider rate limit surfaces as empty output
+# rather than an error, so keep concurrency low.
+evaluateOptions:
+  maxConcurrency: 2
+
+defaultTest:
+  options:
+    # `expect_contains` style multi-part vars are not a matrix here; suffix is a
+    # scalar per-run value.
+    disableVarExpansion: true
+    # Rubric/state grading does not rely on a shared LLM grader for most cases
+    # (graders hit the real API), but a grader provider is needed by any
+    # llm-rubric assertion; keep one configured and explicit.
+    provider:
+      id: openai:chat:z-ai/glm-5.2
+      config:
+        apiBaseUrl: "https://api.tensorx.ai/v1"
+        apiKey: "{{ env.TENSORX_API_KEY }}"
+        temperature: 0
+        max_tokens: 2048
+  # An empty response is the tell-tale of a provider error (rate limit, dropped
+  # connection), not a model failure. Fail loud and name it so it cannot be
+  # mistaken for a correct blank answer.
+  assert:
+    - type: javascript
+      value: |
+        return (output || '').trim().length > 0
+          ? { pass: true, score: 1, reason: 'Provider returned output' }
+          : { pass: false, score: 0, reason: 'EMPTY RESPONSE — provider error, not a model failure. Re-run this row.' };
+
+tests:
+  # --- Read / meta cases (prose-graded where state is not the point) -------
+
+  - description: Identify the authenticated Wagtail user
+    vars:
+      prompt: >-
+        Operating the Wagtail CMS: which user are you authenticated as?
+    assert:
+      - type: python
+        value: file://evals/graders/state_checks.py:whoami
+
+  - description: List the Home page's child pages
+    vars:
+      prompt: >-
+        Using the Wagtail CMS tools, list the direct child pages of the home
+        page with their ids and titles.
+    assert:
+      - type: python
+        value: file://evals/graders/state_checks.py:lists_child_pages
+
+  # --- State-graded write cases (destructive/unique) ------------------------
+
+  - description: Create a blog post under the Blog index
+    vars:
+      suffix: "{{ env.WAGTAIL_EVAL_RUN_ID }}"
+      prompt: >-
+        Using the Wagtail CMS tools, create a draft blog post under the "Blog"
+        index page titled "Eval Page {{ env.WAGTAIL_EVAL_RUN_ID }}". Its body
+        (Markdown) should be "Hello {{ env.WAGTAIL_EVAL_RUN_ID }} world". Do not
+        publish it.
+    assert:
+      - type: python
+        value: file://evals/graders/state_checks.py:blog_post_exists
+
+  - description: Upload an image
+    vars:
+      suffix: "{{ env.WAGTAIL_EVAL_RUN_ID }}"
+      prompt: >-
+        Using the Wagtail CMS tools, upload the following 1x1 transparent GIF
+        as a new image titled "Eval Image {{ env.WAGTAIL_EVAL_RUN_ID }}":
+        filename "pixel-{{ env.WAGTAIL_EVAL_RUN_ID }}.gif", content
+        base64encoded R0lGODlhAQABAIAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==
+        (that base64 is the image data itself).
+    assert:
+      - type: python
+        value: file://evals/graders/state_checks.py:image_uploaded
+
+  - description: Create a Person snippet
+    vars:
+      suffix: "{{ env.WAGTAIL_EVAL_RUN_ID }}"
+      prompt: >-
+        Using the Wagtail CMS tools, create a "blog.Person" snippet named
+        "Eval Person {{ env.WAGTAIL_EVAL_RUN_ID }}" — use that as the first
+        name (and an empty or placeholder last name / job title as needed).
+    assert:
+      - type: python
+        value: file://evals/graders/state_checks.py:snippet_created
+
+  - description: Create a permanent redirect
+    vars:
+      suffix: "{{ env.WAGTAIL_EVAL_RUN_ID }}"
+      prompt: >-
+        Using the Wagtail CMS tools, create a permanent redirect (301) from
+        "/old-{{ env.WAGTAIL_EVAL_RUN_ID }}/" to the home page. Use the home
+        page's id as the redirect target.
+    assert:
+      - type: python
+        value: file://evals/graders/state_checks.py:redirect_created
+
+  - description: Revert a page revision via the escape-hatch api_call
+    vars:
+      page_id: "5"
+      prompt: >-
+        Using the Wagtail CMS tools, create a draft revision of page 5 (the
+        "Tracking Wild Yeast" blog post) that edits its title to something
+        like "Eval Revert {{ env.WAGTAIL_EVAL_RUN_ID }}", then revert page 5
+        back to the revision that existed before that edit. Prefer the
+        api_call escape-hatch tool (operation pages_actions_revert) for the
+        revert step.
+    assert:
+      - type: python
+        value: file://evals/graders/state_checks.py:revision_reverted

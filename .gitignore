@@ -24,5 +24,6 @@ __pycache__/
 
 demo/media
 demo/.demo_token
+evals/results
 bakerydemo
 wagtail
