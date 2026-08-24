@@ -25,7 +25,7 @@
 #   `just eval` sets OPENCODE_CONFIG=evals/opencode.json and exports the above.
 
 prompts:
-  - "{{prompt}}"
+  - '{{prompt}}'
 
 # The OpenCode SDK provider takes its model list from the OPENCODE_CONFIG file
 # (evals/opencode.json). The `apiKey` below satisfies promptfoo's "is this
@@ -34,15 +34,14 @@ prompts:
 providers:
   - id: opencode:sdk
     label: baseline
-    config:
-      &opencode_base
+    config: &opencode_base
       provider_id: tensorx
       model: deepseek/deepseek-v4-flash-0731
-      apiKey: "{{ env.TENSORX_API_KEY }}"
+      apiKey: '{{ env.TENSORX_API_KEY }}'
       # Baseline: no tools at all — no file access, no MCP. The wagtail server
       # is intentionally NOT configured, so the model must answer from memory.
       tools:
-        "*": false
+        '*': false
       permission: &baseline_permission
         external_directory: deny
       custom_agent: &agent
@@ -71,8 +70,8 @@ providers:
       # OpenCode), leaving file/system tools disabled so the model cannot read
       # the repo or shell out — it must use the CMS tools.
       tools:
-        "*": false
-        "wagtail_*": true
+        '*': false
+        'wagtail_*': true
       # Override the MCP server configuration for this arm: point the
       # `wagtail` MCP server at the running demo site.
       mcp:
@@ -80,7 +79,7 @@ providers:
           type: remote
           url: "{{ env.WAGTAIL_EVAL_BASE_URL | default('http://localhost:8000') }}/mcp/"
           headers:
-            Authorization: "Bearer {{ env.WAGTAIL_DEMO_TOKEN }}"
+            Authorization: 'Bearer {{ env.WAGTAIL_DEMO_TOKEN }}'
           timeout: 60000
       permission: *baseline_permission
 
@@ -100,8 +99,8 @@ defaultTest:
     provider:
       id: openai:chat:z-ai/glm-5.2
       config:
-        apiBaseUrl: "https://api.tensorx.ai/v1"
-        apiKey: "{{ env.TENSORX_API_KEY }}"
+        apiBaseUrl: 'https://api.tensorx.ai/v1'
+        apiKey: '{{ env.TENSORX_API_KEY }}'
         temperature: 0
         max_tokens: 2048
   # An empty response is the tell-tale of a provider error (rate limit, dropped
@@ -138,7 +137,7 @@ tests:
 
   - description: Create a blog post under the Blog index
     vars:
-      suffix: "{{ env.WAGTAIL_EVAL_RUN_ID }}"
+      suffix: '{{ env.WAGTAIL_EVAL_RUN_ID }}'
       prompt: >-
         Using the Wagtail CMS tools, create a draft blog post under the "Blog"
         index page titled "Eval Page {{ env.WAGTAIL_EVAL_RUN_ID }}". Its body
@@ -150,7 +149,7 @@ tests:
 
   - description: Upload an image
     vars:
-      suffix: "{{ env.WAGTAIL_EVAL_RUN_ID }}"
+      suffix: '{{ env.WAGTAIL_EVAL_RUN_ID }}'
       prompt: >-
         Using the Wagtail CMS tools, upload the following 1x1 transparent GIF
         as a new image titled "Eval Image {{ env.WAGTAIL_EVAL_RUN_ID }}":
@@ -163,7 +162,7 @@ tests:
 
   - description: Create a Person snippet
     vars:
-      suffix: "{{ env.WAGTAIL_EVAL_RUN_ID }}"
+      suffix: '{{ env.WAGTAIL_EVAL_RUN_ID }}'
       prompt: >-
         Using the Wagtail CMS tools, create a "blog.Person" snippet named
         "Eval Person {{ env.WAGTAIL_EVAL_RUN_ID }}" — use that as the first
@@ -174,7 +173,7 @@ tests:
 
   - description: Create a permanent redirect
     vars:
-      suffix: "{{ env.WAGTAIL_EVAL_RUN_ID }}"
+      suffix: '{{ env.WAGTAIL_EVAL_RUN_ID }}'
       prompt: >-
         Using the Wagtail CMS tools, create a permanent redirect (301) from
         "/old-{{ env.WAGTAIL_EVAL_RUN_ID }}/" to the home page. Use the home
@@ -185,7 +184,7 @@ tests:
 
   - description: Revert a page revision via the escape-hatch api_call
     vars:
-      page_id: "5"
+      page_id: '5'
       prompt: >-
         Using the Wagtail CMS tools, create a draft revision of page 5 (the
         "Tracking Wild Yeast" blog post) that edits its title to something

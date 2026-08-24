@@ -24,8 +24,8 @@ from __future__ import annotations
 
 import json
 import os
-import urllib.parse
 import urllib.request
+
 from typing import Any
 
 
@@ -51,12 +51,51 @@ def _token() -> str:
 
 def _get(path: str, *, token: bool = False) -> dict[str, Any]:
     url = _base_url() + "/api/v3" + path
-    req = urllib.request.Request(url, method="GET")
+    # S310: intentional HTTP GET to the local/configured demo v3 API from a
+    # test grader; base URL is env-controlled (defaults to localhost).
+    req = urllib.request.Request(url, method="GET")  # noqa: S310
     req.add_header("Accept", "application/json")
     if token:
         req.add_header("Authorization", f"Bearer {_token()}")
-    with urllib.request.urlopen(req, timeout=30) as resp:
+    with urllib.request.urlopen(req, timeout=30) as resp:  # noqa: S310
         return json.loads(resp.read().decode("utf-8"))
+
+
+def _get_all(
+    resource_path: str, *, token: bool = False, page_size: int = 20
+) -> list[dict[str, Any]]:
+    """Fetch every item from a v3 list endpoint, paging with offset.
+
+    The v3 API caps ``limit`` at ``WAGTAILAPI_LIMIT_MAX`` (default 20) and
+    responds 400 to anything above it, so a naive ``?limit=100`` fails. We
+    page through ``offset`` in ``page_size`` chunks until we've seen the
+    full ``count`` (or the page comes back shorter than requested, which
+    also signals the end). Resource paths take a trailing slash, e.g.
+    ``/images/``; ``query`` (optional) is appended verbatim.
+    """
+    items: list[dict[str, Any]] = []
+    offset = 0
+    while True:
+        path = f"{resource_path}?limit={page_size}&offset={offset}"
+        data = _get(path, token=token)
+        batch = data.get("items", [])
+        items.extend(batch)
+        total = data.get("count", len(items))
+        offset += len(batch)
+        # Stop once we've collected everything expected, or the batch came
+        # back empty/shorter than a full page (end of results).
+        if len(batch) == 0 or len(items) >= total:
+            break
+    return items
+
+
+def _normalize_path(value: str) -> str:
+    """Strip a leading slash and any trailing slashes from a URL path.
+
+    Used to compare old_path values that the model may have created with or
+    without a trailing slash (e.g. ``/old-x`` vs ``/old-x/``).
+    """
+    return value.strip().strip("/")
 
 
 def _slugify(title: str) -> str:
@@ -138,7 +177,11 @@ def blog_post_exists(output: str, context: dict[str, Any]) -> bool:
     body_text = json.dumps(detail)
 
     ok_fields = detail.get("title") == expected_title
-    ok_body = "hello" in body_text.lower() or "eval" in body_text.lower() or "draft" in body_text.lower()
+    ok_body = (
+        "hello" in body_text.lower()
+        or "eval" in body_text.lower()
+        or "draft" in body_text.lower()
+    )
     return {
         "pass": ok_fields and ok_body,
         "score": 1 if (ok_fields and ok_body) else 0,
@@ -160,7 +203,11 @@ def _tree_digest() -> str:
 def _find_page_by_title(title: str, blog_root_id: int | None = None) -> dict | None:
     # Pages endpoint default limit is 20; the model is asked to create a
     # draft under Blog (id 4), so browse child_of the blog root directly.
-    path = f"/pages/?child_of={blog_root_id}&limit=20" if blog_root_id else "/pages/?limit=20"
+    path = (
+        f"/pages/?child_of={blog_root_id}&limit=20"
+        if blog_root_id
+        else "/pages/?limit=20"
+    )
     data = _get(path, token=True)
     for item in data.get("items", []):
         if item.get("title") == title:
@@ -176,15 +223,19 @@ def image_uploaded(output: str, context: dict[str, Any]) -> bool:
     vars_ = context.get("vars", {})
     suffix = str(vars_.get("suffix", ""))
     expected = f"Eval Image {suffix}".strip()
-    data = _get("/images/?limit=100", token=True)
-    for item in data.get("items", []):
+    data = _get_all("/images/", token=True)
+    for item in data:
         if item.get("title") == expected:
-            return {"pass": True, "score": 1, "reason": f"image titled {expected!r} exists"}
+            return {
+                "pass": True,
+                "score": 1,
+                "reason": f"image titled {expected!r} exists",
+            }
     return {
         "pass": False,
         "score": 0,
         "reason": f"no image titled {expected!r} found; sample titles: "
-        + ", ".join(i.get("title", "") for i in data.get("items", [])[:5])[:200],
+        + ", ".join(i.get("title", "") for i in data[:5])[:200],
     }
 
 
@@ -196,52 +247,50 @@ def snippet_created(output: str, context: dict[str, Any]) -> bool:
     vars_ = context.get("vars", {})
     suffix = str(vars_.get("suffix", ""))
     expected = f"Eval Person {suffix}".strip()
-    data = _get("/snippets/blog.Person/?limit=100", token=True)
-    for item in data.get("items", []):
+    data = _get_all("/snippets/blog.Person/", token=True)
+    for item in data:
         if item.get("first_name", "").strip() == expected:
             return {"pass": True, "score": 1, "reason": f"Person {expected!r} exists"}
     return {
         "pass": False,
         "score": 0,
         "reason": f"no Person named {expected!r} found; sample names: "
-        + ", ".join(i.get("first_name", "") for i in data.get("items", [])[:5])[:200],
+        + ", ".join(i.get("first_name", "") for i in data[:5])[:200],
     }
 
 
 def redirect_created(output: str, context: dict[str, Any]) -> bool:
     """The model created a permanent redirect for a unique old path.
 
-    Graded on CMS state: a redirect with old_path ``/old-<suffix>`` exists.
+    Graded on CMS state: a redirect whose ``old_path`` matches the expected
+    ``/old-<suffix>-<unique>`` exists. Matching normalizes the trailing
+    slash (the model may create ``/old-x`` or ``/old-x/``).
     """
     vars_ = context.get("vars", {})
     suffix = str(vars_.get("suffix", ""))
-    expected = f"/old-{suffix}/"
-    params = urllib.parse.urlencode({"html_path": expected})
-    # redirects_find returns 404 for a missing redirect; treat that as "not
-    # found" via an exception so the grader fails with a clear reason.
-    status, body = _get_redirect_find(params)
-    if status in (200,):
-        return {"pass": True, "score": 1, "reason": f"redirect for {expected!r} exists"}
+    expected_norm = _normalize_path(f"old-{suffix}")
+    redirects = _get_all("/redirects/", token=True)
+    for item in redirects:
+        actual = _normalize_path(str(item.get("old_path", "")))
+        if actual and actual == expected_norm:
+            return {
+                "pass": True,
+                "score": 1,
+                "reason": f"redirect for {expected_norm!r} exists",
+            }
     return {
         "pass": False,
         "score": 0,
-        "reason": f"redirect for {expected!r} not found (status {status}); list: {_redirect_old_paths()}",
+        "reason": f"no redirect matching {expected_norm!r} found; paths: {_redirect_old_paths()}",
     }
-
-
-def _get_redirect_find(params: str) -> tuple[int, dict]:
-    try:
-        return 200, _get(f"/redirects/find/?{params}", token=True)
-    except Exception as exc:
-        # urllib raises HTTPError for 4xx; surface the status code.
-        status = getattr(exc, "code", None)
-        return (status if status else 0), {}
 
 
 def _redirect_old_paths() -> str:
     try:
-        data = _get("/redirects/?limit=50", token=True)
-        return ", ".join(i.get("old_path", "") for i in data.get("items", []))[:200]
+        redirects = _get_all("/redirects/", token=True)
+        return ", ".join(
+            _normalize_path(str(i.get("old_path", ""))) for i in redirects
+        )[:200]
     except Exception:  # pragma: no cover
         return ""
 
