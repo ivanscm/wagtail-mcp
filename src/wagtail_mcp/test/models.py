@@ -11,7 +11,7 @@ class ContentPage(Page):
 
     content_panels = Page.content_panels + [FieldPanel("body")]
 
-    api_fields = [APIField("body")]
+    api_fields = [APIField("body", writable=True)]
 
 
 @register_snippet

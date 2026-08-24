@@ -74,6 +74,10 @@ def test_initialize_and_tools_list(client, token):
         "pages_list",
         "pages_find",
         "pages_detail",
+        "pages_create",
+        "pages_update",
+        "pages_delete",
+        "pages_actions_delete",
     }
 
 
