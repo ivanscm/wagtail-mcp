@@ -112,8 +112,8 @@ eval-init:
 eval-setup:
     #!/usr/bin/env bash
     set -euo pipefail
-    if curl -sf --max-time 2 http://localhost:8000/mcp/ >/dev/null 2>&1; then
-        echo "The demo server appears to be running (reached /mcp/)." >&2
+    if [ "$(curl -s -o /dev/null -w '%{http_code}' --max-time 2 http://localhost:8000/mcp/ 2>/dev/null || true)" != "000" ]; then
+        echo "The demo server appears to be running (reached /mcp/, method check answered)." >&2
         echo "Stop it first (Ctrl+C on `just demo`, or kill the runserver) before eval-setup,"
         echo "because it will replace demo/db.sqlite3 and demo/media underneath it." >&2
         exit 1
@@ -143,7 +143,7 @@ eval:
         echo "demo/.demo_token is missing — run `just eval-setup` (and start the demo) first." >&2
         exit 1
     fi
-    if ! curl -sf --max-time 3 http://localhost:8000/mcp/ >/dev/null 2>&1; then
+    if [ "$(curl -s -o /dev/null -w '%{http_code}' --max-time 3 http://localhost:8000/mcp/ 2>/dev/null || true)" = "000" ]; then
         echo "The demo server/MCP endpoint does not respond at http://localhost:8000/mcp/." >&2
         echo "Start it in another terminal with `just demo` (or your own runserver), then retry." >&2
         exit 1
