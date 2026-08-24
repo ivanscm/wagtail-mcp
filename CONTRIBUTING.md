@@ -30,6 +30,10 @@ Here are the available scripts for the project:
 just clean-pyc         # Remove all the Python and Node.js cache files.
 just coverage          # Run tests with coverage.
 just demo              # Run the demo application.
+just eval              # Run the Promptfoo eval suite against the demo site.
+just eval-init         # Install promptfoo + OpenCode CLI + the OpenCode SDK (globally).
+just eval-setup        # Reset the demo DB to fixtures + a fresh/stable API token for evals.
+just eval-view         # Open the promptfoo dashboard for the latest eval run.
 just format            # Run all formatters.
 just format-client     # Format the client code with Prettier.
 just format-server     # Format the server code with uv.
@@ -44,6 +48,39 @@ just runserver         # Run the development server at the given host and port.
 just shell             # Open a shell to the demo application.
 just test              # Run tests with pytest.
 ```
+
+## Agent-behavior evals
+
+Beyond unit/integration tests, wagtail-mcp verifies that a real model actually
+*uses* the tools, via a Promptfoo eval suite that drives the demo site through
+the OpenCode SDK (`evals/`). This is the layer that proves the curated tools
+are ergonomic enough for an agent to reach for, not just callable.
+
+Setup and run:
+
+```sh
+just eval-init    # installs promptfoo + the OpenCode CLI + @opencode-ai/sdk globally
+just eval-setup   # resets the demo DB to fixtures and issues a fresh API token
+just demo         # run the demo site the suite runs against
+just eval         # run the suite
+just eval --repeat 3   # agent runs are noisy; repeat before trusting a delta
+just eval-view    # dashboard for the latest run
+```
+
+The suite is not part of the default `just test`/CI gate: it is token-heavy,
+noisy, and requires a live demo server plus an API key.
+
+**Requirements** (`just eval-setup` and `just eval` document the exact env
+vars):
+
+- `TENSORX_API_KEY` — the model under test and the rubric grader both run on
+  TensorX.
+- A running demo site (the demo API token in `demo/.demo_token` is read by the
+  graders to verify post-conditions through the v3 API).
+
+Note: the eval commands install tooling **globally** (promptfoo, OpenCode CLI,
+`@opencode-ai/sdk`), deliberately kept out of `package.json` so contributors
+who never run evals don't pay for them.
 
 ## Writing tests
 

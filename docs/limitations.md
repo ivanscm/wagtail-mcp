@@ -1,8 +1,7 @@
 # Limitations
 
-This page documents current wagtail-mcp limitations. It is intentionally short
-for now and will be expanded as the package matures (the design spec tracks the
-intended scope in `local/superpowers/specs/2026-08-23-mcp-server-design.md`).
+This page documents current wagtail-mcp limitations — the scope it deliberately
+does not cover and the coupling that comes with reusing the Wagtail v3 API.
 
 ## In-process dispatch via Django's test Client
 
@@ -27,18 +26,59 @@ What this means:
   (`auth.current_host`), so `detail_url`/`html_url` resolve to the caller's
   host rather than Django's hardcoded `testserver`. This is a fallback, not a
   substitute for setting `WAGTAILAPI_BASE_URL`.
+- **Non-POST → 405.** The endpoint serves `POST` only; GET (the SSE stream) is
+  not mounted, so non-POST methods return 405 before any auth check.
 
-## No SSE streaming transport
+## Transport and SDK coupling
 
-The MCP endpoint serves **stateless Streamable HTTP with JSON responses only**
-(one POST = one JSON-RPC response). It does not serve the HTTP GET/SSE stream,
-so long-lived server-push sessions are unsupported. This is fine for
-OpenCode, Hermes, and Claude-style clients that POST JSON-RPC.
+- **Stateless Streamable HTTP, JSON responses only.** One POST = one JSON-RPC
+  response; no SSE/GET streaming, no server-side sessions, no long-lived push.
+  Fine for the current clients (which POST JSON-RPC), but remote clients that
+  rely on SSE fallback or server-push notifications are unsupported.
+- **MCP SDK pinned exactly.** `mcp` is pinned to the exact version the
+  transport was built against (currently `2.0.0`). Bumps must be deliberate:
+  verify the ASGI-session-manager lifecycle (which we construct per request)
+  and the `MCPServer._lowlevel_server` accessor we use to embed the transport
+  in a Django view. That `_lowlevel_server` is the SDK's **private** attribute
+  — there is no portable public accessor on `MCPServer`, so this is coupling
+  worth re-checking on SDK upgrades.
 
-## Other known gaps
+## Authentication
 
-- **No OAuth yet** — authentication uses Wagtail `APIToken` bearer tokens
-  (see the roadmap).
-- **No workflow/moderation endpoints** — the v3 API does not expose them yet.
+- **No OAuth (yet).** Authentication uses Wagtail `APIToken` bearer tokens.
+  Planned roadmap: OAuth 2.1 for the MCP HTTP transport (e.g. via
+  `django-oauth-toolkit` or the MCP SDK's auth-provider hooks). Because both
+  the token path and an OAuth path resolve to the same Wagtail user model and
+  only change the identity resolution at the MCP boundary, the 60 tools are
+  agnostic to the choice — the migration should be transparent to tool callers.
+- **Plaintext token in client configs.** MCP client configs typically store the
+  bearer token in plaintext; keep them permission-restricted and out of version
+  control, and rotate tokens (revocation applies immediately). See
+  [configuration](configuration.md).
+
+## Coverage gaps
+
+- **No workflow/moderation endpoints.** The v3 API does not expose submitting,
+  approving or rejecting workflow tasks yet, so there are no corresponding
+  tools.
+- **No tags write on images/documents.** The v3 image/document write schemas
+  expose no tags input (tags are read-only under `meta`) — a gap we'd like to
+  feed back upstream (see [api-feedback](api-feedback.md)).
+- **Markdown image embeds are dropped.** Rich-text writes as Markdown do not
+  preserve image embeds (the v3 sanitizer drops them silently); the workaround
+  is a `db_html` body via `api_call` (see [escape-hatch](escape-hatch.md)).
+- **Per-mount prefix stripping.** wagtail-mcp detects the v3 API's mount prefix
+  from the OpenAPI schema to dispatch in-process. If every path in a schema
+  does not share a common leading segment, prefix detection degrades — in
+  practice the schema is always under one mount (`/api/v3/`,
+  `/api/v3-preview/`, …), so this is a latent edge rather than a live one.
+- **Writable fields require `writable=True`.** Only `api_fields` marked
+  `writable=True` appear in the v3 create/update schemas. A project whose
+  content model exposes a field read-only on the API cannot write it through
+  wagtail-mcp until the model marks it writable — the field is silently omitted
+  from the write schema rather than erroring.
+- **Snippet drafts/live state.** The snippet read schema's `meta` does not
+  surface a `live` flag, so agents can't glean publish state from a snippet
+  detail read alone (they must know whether the type is draftable).
 - Redirects returned by the API are followed transparently (e.g. `pages_find`
   responds with a 302 to the page detail; the tool follows it).

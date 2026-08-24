@@ -24,6 +24,10 @@ When the server is up:
   <http://localhost:8000/api/v3/openapi.json>).
 - The MCP endpoint is at <http://localhost:8000/mcp/>.
 
+> **Local development only.** The demo uses an easily-guessable `admin`
+> / `changeme` superuser and prints the API token to a local file. Do not
+> expose the demo site or the `admin` account to anything but localhost.
+
 ## Your MCP token
 
 The API token for the MCP server is written to `demo/.demo_token`. It is created

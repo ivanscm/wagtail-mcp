@@ -64,6 +64,9 @@ class Command(BaseCommand):
 
         _, plaintext = APIToken.create_token(user=user, name=TOKEN_NAME)
         token_file.write_text(plaintext.rstrip("\n") + "\n")
+        # Restrict the plaintext token file to the owner: the token authorizes
+        # write access to the whole CMS, so it must not be world-readable.
+        token_file.chmod(0o600)
         self.stdout.write(
             self.style.SUCCESS(
                 f"Created API token '{TOKEN_NAME}': {plaintext}\n"
