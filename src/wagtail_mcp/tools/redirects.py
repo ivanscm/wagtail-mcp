@@ -118,9 +118,11 @@ def register(server):
         name="redirects_update",
         annotations=WRITE,
         description="Update an existing redirect (by `redirect_id`) — its old "
-        "path, target page or URL, and site scope. "
-        "`redirect_page_id` and `redirect_link` select the target. "
-        "Returns the updated redirect's detail.",
+        "path, site scope, or permanence. Only the fields you pass are "
+        "changed; the existing link/page target is preserved unless you "
+        "supply a new one. Pass `redirect_page_id` to point at a page, or "
+        "`redirect_link` to point at a URL — giving one clears the other "
+        "(switch target type). Returns the updated redirect's detail.",
     )
     def redirects_update(
         redirect_id: int,
@@ -130,14 +132,40 @@ def register(server):
         site_id: int | None = None,
         is_permanent: bool | None = None,
     ) -> dict[str, object]:
+        # The v3 ``redirects_update`` schema requires only ``old_path`; the
+        # target fields are optional (defaulting to null/empty). Fetch the
+        # current redirect and merge so that a partial update preserves the
+        # existing target instead of silently clearing it.
+        current = dispatch.call_operation(
+            "redirects_detail", path_params={"redirect_id": redirect_id}
+        )
         update_body = {
-            "old_path": old_path or "",
-            "redirect_page_id": redirect_page_id,
-            "redirect_link": redirect_link or "",
-            "is_permanent": True if is_permanent is None else is_permanent,
+            "old_path": old_path if old_path is not None else current["old_path"],
+            "is_permanent": (
+                is_permanent if is_permanent is not None else current["is_permanent"]
+            ),
         }
         if site_id is not None:
             update_body["site"] = site_id
+        elif current["site_id"] is not None:
+            update_body["site"] = current["site_id"]
+
+        if redirect_page_id is not None:
+            # Switch / keep to a page target: clear any external link.
+            update_body["redirect_page_id"] = redirect_page_id
+            update_body["redirect_link"] = ""
+            if current.get("redirect_page_route_path"):
+                update_body["redirect_page_route_path"] = current[
+                    "redirect_page_route_path"
+                ]
+        elif redirect_link is not None:
+            # Switch / keep to an external link: clear any page target.
+            update_body["redirect_page_id"] = None
+            update_body["redirect_link"] = redirect_link
+        else:
+            # No target change: preserve the existing target unchanged.
+            update_body["redirect_page_id"] = current.get("redirect_page_id")
+            update_body["redirect_link"] = current.get("redirect_link")
         data = dispatch.call_operation(
             "redirects_update",
             path_params={"redirect_id": redirect_id},

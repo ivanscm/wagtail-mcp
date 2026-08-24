@@ -102,6 +102,42 @@ def test_redirects_update(client, token, created_redirect, target_page):
     assert detail["old_path"] == "/moved"
 
 
+def test_redirects_update_preserves_page_target(
+    client, token, created_redirect, target_page
+):
+    # Patching only `is_permanent` must NOT clear the existing link/page
+    # target — the fetched current redirect is merged, so redirect_page_id
+    # stays set (a regression guard against clobbering the target).
+    updated = call_tool(
+        client,
+        token,
+        "redirects_update",
+        redirect_id=created_redirect["id"],
+        is_permanent=False,
+    )
+    assert updated["is_permanent"] is False
+    assert updated["redirect_page_id"] == target_page.pk
+
+    detail = call_tool(
+        client, token, "redirects_detail", redirect_id=created_redirect["id"]
+    )
+    assert detail["redirect_page_id"] == target_page.pk
+
+
+def test_redirects_update_switch_target_to_link(client, token, created_redirect):
+    # Providing an external link switches the target type: the page target is
+    # cleared and the link set (redirects can target one OR the other).
+    updated = call_tool(
+        client,
+        token,
+        "redirects_update",
+        redirect_id=created_redirect["id"],
+        redirect_link="https://example.com/new",
+    )
+    assert updated["redirect_link"] == "https://example.com/new"
+    assert updated["redirect_page_id"] is None
+
+
 def test_redirects_delete(client, token, created_redirect):
     result = call_tool(
         client, token, "redirects_delete", redirect_id=created_redirect["id"]
