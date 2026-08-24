@@ -116,6 +116,14 @@ def mcp_endpoint(request):
 
     context_token = auth.current_token.set(token)
     try:
-        return _handle_stateless(request, _build_scope(request))
+        try:
+            host = request.get_host()
+        except Exception:  # DisallowedHost and friends
+            host = None
+        context_host = auth.current_host.set(host)
+        try:
+            return _handle_stateless(request, _build_scope(request))
+        finally:
+            auth.current_host.reset(context_host)
     finally:
         auth.current_token.reset(context_token)

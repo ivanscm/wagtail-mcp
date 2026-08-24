@@ -17,16 +17,18 @@ handles redirects natively.
 """
 
 import functools
-import json
 
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.core.serializers.json import DjangoJSONEncoder
 from django.test import Client
 
 from wagtail_mcp import auth
 from wagtail_mcp.errors import APIError
 
 
-_json_dumps = json.dumps
+# Request bodies may contain non-{primitive} values (e.g. a ``datetime`` from a
+# pydantic schema default); Django's JSON encoder serializes those cleanly.
+_json_dumps = DjangoJSONEncoder().encode
 
 # URL mount prefix for the v3 API, e.g. "/api/v3/". Paths from the OpenAPI
 # schema are absolute (with this prefix); the test Client needs the full
@@ -55,6 +57,8 @@ class DjangoClient:
         query_params=None,
         headers=None,
         FILES=None,
+        host=None,
+        port=None,
     ):
         from urllib.parse import urlencode
 
@@ -77,6 +81,13 @@ class DjangoClient:
                     for name, value in headers.items()
                 }
             )
+        # The real caller host, forwarded so absolute API URLs (``detail_url`` /
+        # ``html_url``) resolve to the caller rather than ``testserver``.
+        # Django's test client reads these from ``META``/environ directly.
+        if host:
+            client_kwargs["HTTP_HOST"] = host
+        if port:
+            client_kwargs["SERVER_PORT"] = port
         if json is not None:
             client_kwargs["data"] = _json_dumps(json)
             client_kwargs["content_type"] = "application/json"
@@ -89,11 +100,19 @@ class DjangoClient:
                 merged.update(FILES)
             client_kwargs["data"] = merged
 
+        # Follow HTTP redirects transparently so ``pages_find`` (which the v3
+        # API answers with a 302 to the page-detail URL) works like a real
+        # HTTP client instead of surfacing a raw 302.
         return call(path, follow=True, **client_kwargs)
 
 
-@functools.cache
 def _client() -> DjangoClient:
+    """Return a fresh Django test client per call.
+
+    Tool handlers run in concurrent worker threads; ``django.test.Client`` is
+    stateful, so a process-wide cached instance would not be thread-safe. A
+    fresh ``Client()`` per dispatch is cheap.
+    """
     return DjangoClient()
 
 
@@ -214,6 +233,23 @@ def call_operation(
     if resolved_token:
         headers = {"Authorization": f"Bearer {resolved_token}"}
 
+    # Forward the request's real Host into the in-process client so absolute
+    # API URLs (e.g. ``meta.detail_url``/``meta.html_url``) resolve to the
+    # caller's host rather than Django's hardcoded ``testserver``. Split any
+    # ``:port`` off the value; port is passed separately as SERVER_PORT.
+    host = auth.current_host.get()
+    host_header = None
+    port = None
+    if host:
+        if ":" in host:
+            hostname, _, candidate = host.rpartition(":")
+            if candidate.isdigit():
+                host_header, port = hostname, candidate
+            else:
+                host_header = host
+        else:
+            host_header = host
+
     response = _client().request(
         method.upper(),
         path,
@@ -222,6 +258,8 @@ def call_operation(
         query_params={k: v for k, v in (query or {}).items() if v is not None},
         headers=headers,
         FILES=upload_files,
+        host=host_header,
+        port=port,
     )
 
     if response.status_code >= 400:

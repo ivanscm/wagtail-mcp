@@ -169,6 +169,8 @@ class FakeClient:
         query_params=None,
         headers=None,
         FILES=None,
+        host=None,
+        port=None,
     ):
         self.calls.append(
             {
@@ -176,6 +178,8 @@ class FakeClient:
                 "path": path,
                 "query_params": query_params,
                 "headers": headers or {},
+                "host": host,
+                "port": port,
             }
         )
         return self.response
@@ -238,3 +242,44 @@ def test_clear_caches_invalidates_all():
     assert operation_map()["whoami"] == ("get", "/api/v3/whoami/")
     # Leave a warm cache behind for any trailing collection needs.
     operation_map()
+
+
+def test_host_forwarding_controls_absolute_urls(token, settings, root_page):
+    """Forwarding the caller's Host shapes absolute API URLs (no testserver).
+
+    When ``WAGTAILAPI_BASE_URL`` is unset, ``get_base_url`` falls back to
+    ``Site.find_for_request(request)``, which reads the request's Host. The
+    dispatch layer must forward the MCP request's real host (via
+    ``auth.current_host``) so absolute ``detail_url``/``html_url`` resolve to the
+    caller rather than Django's hardcoded ``testserver`` host.
+    """
+    from wagtail_mcp import auth
+
+    settings.WAGTAILAPI_BASE_URL = None
+    settings.ALLOWED_HOSTS = ["*"]
+    cms_root = ContentPage(title="cms", slug="cms")
+    root_page.add_child(instance=cms_root)
+    other_root = ContentPage(title="other", slug="other")
+    root_page.add_child(instance=other_root)
+    Site.objects.create(
+        hostname="cms.example.com", root_page=cms_root, is_default_site=False
+    )
+    Site.objects.create(
+        hostname="other.example.com", root_page=other_root, is_default_site=True
+    )
+    page = ContentPage(title="T", slug="t")
+    cms_root.add_child(instance=page)
+    page.save_revision().publish()
+
+    token_var = auth.current_token.set(token)
+    try:
+        auth.current_host.set("cms.example.com")
+        result = call_operation(
+            "pages_detail", path_params={"page_id": page.pk}, query={"version": "live"}
+        )
+        detail_url = result["meta"]["detail_url"]
+        assert "cms.example.com" in detail_url
+        assert "testserver" not in detail_url
+    finally:
+        auth.current_token.reset(token_var)
+        auth.current_host.set(None)
