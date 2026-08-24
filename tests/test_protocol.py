@@ -98,6 +98,18 @@ def test_initialize_and_tools_list(client, token):
         "documents_create",
         "documents_update",
         "documents_delete",
+        "snippets_list",
+        "snippets_detail",
+        "snippets_create",
+        "snippets_update",
+        "snippets_delete",
+        "snippets_actions_delete",
+        "snippets_revisions_list",
+        "snippets_revisions_detail",
+        "snippets_actions_publish",
+        "snippets_actions_unpublish",
+        "snippets_actions_revert",
+        "snippets_actions_copy_for_translation",
     }
 
 
