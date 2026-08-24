@@ -130,6 +130,32 @@ def test_missing_path_param_raises_clean_apierror(token):
     assert "page_id" in exc.value.problem["detail"]
 
 
+def test_malformed_path_template_raises_clean_apierror():
+    # A path template with an unnamed field ("{}") raises IndexError from
+    # str.format — it must surface as a clean APIError, not a raw exception.
+    with mock.patch.object(
+        dispatch, "operation_map", return_value={"broken": ("get", "/api/v3/pages/{}")}
+    ):
+        with pytest.raises(APIError) as exc:
+            call_operation("broken")
+    assert exc.value.status == 500
+    assert "malformed" in exc.value.problem["detail"]
+
+
+def test_invalid_path_template_raises_clean_apierror():
+    # A template with a malformed format spec (nested braces) raises ValueError
+    # from str.format — caught and surfaced as an APIError naming the problem.
+    with mock.patch.object(
+        dispatch,
+        "operation_map",
+        return_value={"broken": ("get", "/api/v3/pages/{page{{id}")},
+    ):
+        with pytest.raises(APIError) as exc:
+            call_operation("broken", path_params={"page_id": 1})
+    assert exc.value.status == 500
+    assert "malformed" in exc.value.problem["detail"]
+
+
 def test_body_with_form_raises_clean_apierror(token):
     with pytest.raises(APIError) as exc:
         call_operation(

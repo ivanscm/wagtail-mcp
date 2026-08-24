@@ -21,10 +21,21 @@ from wagtail_mcp.server import get_server
 from wagtail_mcp.settings import get_config
 
 
+def _encode_header(value):
+    """Encode a header name/value for ASGI, tolerating non-latin-1 content.
+
+    Django's ``request.headers`` values are str; ASGI requires bytes. RFC 7230
+    limits header bytes to US-ASCII, but a client may send non-ASCII (e.g. a
+    Unicode User-Agent). Encoding defensively (drop the unencodable bytes)
+    avoids a 500 before auth instead of a benign request crashing the view.
+    """
+    return value.encode("latin-1", "ignore")
+
+
 def _scope_headers(request):
     """Django request headers → ASGI ``[(name_bytes, value_bytes)]`` list."""
     return [
-        (name.lower().encode("latin-1"), value.encode("latin-1"))
+        (_encode_header(name.lower()), _encode_header(value))
         for name, value in request.headers.items()
     ]
 
@@ -106,13 +117,11 @@ def mcp_endpoint(request):
     does not serve the SSE GET stream; stateless JSON responses only.
     """
     config = get_config()
-    token = None
-    if config.get("require_auth", True):
-        token = auth.resolve_bearer(request)
-        if token is None:
-            response = JsonResponse({"error": "invalid_token"}, status=401)
-            response["WWW-Authenticate"] = "Bearer"
-            return response
+    token = auth.resolve_bearer(request)
+    if config.get("require_auth", True) and token is None:
+        response = JsonResponse({"error": "invalid_token"}, status=401)
+        response["WWW-Authenticate"] = "Bearer"
+        return response
 
     context_token = auth.current_token.set(token)
     try:

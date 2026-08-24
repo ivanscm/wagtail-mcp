@@ -32,9 +32,11 @@ dependencies = [
     # https://docs.wagtail.org/en/latest/releases/upgrading.html#compatible-django-python-versions
     "wagtail>=8.0",
     # django-ninja arrives transitively via Wagtail (the v3 API it ships is built on it).
-    # wagtail-mcp dispatches tools through django-ninja's in-process TestClient, so the
-    # ninja floor is effectively pinned by Wagtail's requirement — coordinate any bump there.
-    "mcp==2.0.0",  # pinned exactly; matches vendored SDK (v2.0.0-21) used for reference in local/deps. Bumps are deliberate CHANGELOG entries.
+    # wagtail-mcp dispatches tools in-process through Django's real test Client against
+    # the mounted URLconf (see wagtail_mcp/dispatch.py), so the ninja floor is effectively
+    # pinned by Wagtail's requirement — coordinate any bump there. mcp is pinned exactly
+    # (matches the vendored SDK v2.0.0-21 in local/deps); bumps are deliberate CHANGELOG entries.
+    "mcp==2.0.0",
 ]
 
 # PyPI has no stable wagtail>=8.0 yet (only 8.0rc2), so point the local

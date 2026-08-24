@@ -222,6 +222,19 @@ def call_operation(
                 "detail": f"Operation {operation_id!r} requires path parameter {exc.args[0]!r}.",
             },
         ) from None
+    except (IndexError, ValueError) as exc:
+        # A malformed template (e.g. "{}" without a field, or an unmatched
+        # brace) raises IndexError/ValueError rather than KeyError. Surface
+        # these as clean APIErrors instead of leaking raw exceptions out of
+        # the tool.
+        raise APIError(
+            500,
+            {
+                "title": "Invalid path template",
+                "status": 500,
+                "detail": f"Path template for operation {operation_id!r} is malformed: {exc}.",
+            },
+        ) from None
 
     upload_files = None
     if files:

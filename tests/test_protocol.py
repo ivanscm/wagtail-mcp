@@ -157,3 +157,50 @@ def test_malformed_jsonrpc(client, settings, token):
     response = post(client, {"jsonrpc": "2.0", "id": 9, "method": "no/such"}, token)
     body = response.json()
     assert "error" in body
+
+
+@pytest.mark.django_db
+def test_unicode_header_does_not_crash_view(client, settings):
+    """A non-latin-1 header value must not raise UnicodeEncodeError (M2).
+
+    The ASGI scope builder encodes header values to latin-1; a client sending a
+    non-ASCII value (e.g. a Unicode User-Agent) must be tolerated rather than
+    turning a benign request into a 500 before auth. With auth required and no
+    token, the request should reach the auth gate and return 401, not crash.
+    """
+    settings.WAGTAIL_MCP = {"require_auth": True}
+    response = client.post(
+        "/mcp/",
+        json.dumps(INIT),
+        content_type="application/json",
+        HTTP_ACCEPT=ACCEPT,
+        HTTP_USER_AGENT="Mozilla/5.0 (x) ünïcode",
+    )
+    assert response.status_code == 401
+
+
+@pytest.mark.django_db(transaction=True)
+def test_require_auth_false_still_forwards_valid_token(client, token, settings):
+    """With require_auth disabled, a presented valid token is still honored (M6).
+
+    require_auth only gates the *rejection* of missing/invalid tokens; a client
+    that nonetheless sends a valid token should have it resolved and forwarded so
+    authenticated operations (whoami / writes) work as that user.
+    """
+    settings.WAGTAIL_MCP = {"require_auth": False}
+    result = call_tool(client, token, "whoami")
+    assert result["user"]["username"] == "admin"
+
+
+@pytest.mark.django_db(transaction=True)
+def test_require_auth_false_anonymous_tool_call_is_error(client, settings):
+    """Without a token and auth disabled, an authed-only tool is an MCP error.
+
+    whoami requires v3 authentication; called anonymously it surfaces an isError
+    tool result (HTTP 200 at the MCP layer), not an HTTP 401 at the transport.
+    """
+    settings.WAGTAIL_MCP = {"require_auth": False}
+    result = call_tool_raw(client, None, "whoami")
+    assert result.get("isError") is True
+    text = result["content"][0]["text"]
+    assert "401" in text or "Unauthorized" in text or "API token" in text
