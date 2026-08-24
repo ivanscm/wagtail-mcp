@@ -123,7 +123,7 @@ tests:
         Operating the Wagtail CMS: which user are you authenticated as?
     assert:
       - type: python
-        value: file://evals/graders/state_checks.py:whoami
+        value: file://graders/state_checks.py:whoami
 
   - description: List the Home page's child pages
     vars:
@@ -132,7 +132,7 @@ tests:
         page with their ids and titles.
     assert:
       - type: python
-        value: file://evals/graders/state_checks.py:lists_child_pages
+        value: file://graders/state_checks.py:lists_child_pages
 
   # --- State-graded write cases (destructive/unique) ------------------------
 
@@ -146,7 +146,7 @@ tests:
         publish it.
     assert:
       - type: python
-        value: file://evals/graders/state_checks.py:blog_post_exists
+        value: file://graders/state_checks.py:blog_post_exists
 
   - description: Upload an image
     vars:
@@ -159,7 +159,7 @@ tests:
         (that base64 is the image data itself).
     assert:
       - type: python
-        value: file://evals/graders/state_checks.py:image_uploaded
+        value: file://graders/state_checks.py:image_uploaded
 
   - description: Create a Person snippet
     vars:
@@ -170,7 +170,7 @@ tests:
         name (and an empty or placeholder last name / job title as needed).
     assert:
       - type: python
-        value: file://evals/graders/state_checks.py:snippet_created
+        value: file://graders/state_checks.py:snippet_created
 
   - description: Create a permanent redirect
     vars:
@@ -181,7 +181,7 @@ tests:
         page's id as the redirect target.
     assert:
       - type: python
-        value: file://evals/graders/state_checks.py:redirect_created
+        value: file://graders/state_checks.py:redirect_created
 
   - description: Revert a page revision via the escape-hatch api_call
     vars:
@@ -195,4 +195,4 @@ tests:
         revert step.
     assert:
       - type: python
-        value: file://evals/graders/state_checks.py:revision_reverted
+        value: file://graders/state_checks.py:revision_reverted
