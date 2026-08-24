@@ -84,11 +84,12 @@ def test_api_call_unknown_operation(client, token):
 @pytest.mark.django_db
 def test_tool_inventory_counts_meta_tools(client, token):
     # Confirm exactly the meta + page tools are registered (5 meta + 3 page
-    # read + 4 page write tools; Task 14 adds the full 57-tool inventory test).
+    # read + 4 page write tools + 10 page action tools; Task 14 adds the full
+    # 57-tool inventory test).
     from test_protocol import post
 
     response = post(
         client, {"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}}, token
     )
     tools = response.json()["result"]["tools"]
-    assert len(tools) == 12
+    assert len(tools) == 22

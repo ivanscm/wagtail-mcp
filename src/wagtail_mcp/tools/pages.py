@@ -99,6 +99,7 @@ def register(server):
         return trim_data(data)
 
     _register_page_write_tools(server)
+    _register_page_action_tools(server)
 
 
 def trim_data(data):
@@ -203,10 +204,11 @@ def _register_page_write_tools(server):
         server,
         name="pages_delete",
         annotations=DESTRUCTIVE,
-        description="Delete a page permanently (and, by Wagtail semantics, "
-        "its descendants in preview — see `pages_actions_delete` for the "
-        "tree-scoped variant). Irreversible; use carefully. Returns "
-        '`{"deleted": true, "page_id": ...}`.',
+        description="Delete a page permanently. Irreversible; use carefully. "
+        "`pages_actions_delete` is the same delete action exposed under the "
+        "REST `/actions/delete/` path for parity; both permanently delete the "
+        "page and (per Wagtail semantics) its descendants. Prefer this tool. "
+        'Returns `{"deleted": true, "page_id": ...}`.',
     )
     def pages_delete(page_id: int) -> dict[str, object]:
         dispatch.call_operation("pages_delete", path_params={"page_id": page_id})
@@ -227,3 +229,244 @@ def _register_page_write_tools(server):
             "pages_actions_delete", path_params={"page_id": page_id}
         )
         return {"deleted": True, "page_id": page_id}
+
+
+def _register_page_action_tools(server):
+    """Register the page workflow/action tools (publish, move, copy, revert,
+    aliases, translations) and the revision read tools."""
+
+    @wagtail_tool(
+        server,
+        name="pages_actions_publish",
+        annotations=WRITE,
+        description="Publish a page's latest revision (creating a new one from "
+        "the current draft state if none exists yet). Requires publish "
+        "permission. Returns the published page detail.",
+    )
+    def pages_actions_publish(page_id: int) -> dict[str, object]:
+        return trim_data(
+            dispatch.call_operation(
+                "pages_actions_publish", path_params={"page_id": page_id}
+            )
+        )
+
+    @wagtail_tool(
+        server,
+        name="pages_actions_unpublish",
+        annotations=DESTRUCTIVE,
+        description="Unpublish a live page, taking it offline. Pass "
+        "`recursive=True` to also unpublish its descendants. Requires publish "
+        "permission. Note this is NOT idempotent: unpublishing an already-"
+        'unpublished page errors with 403, so check `pages_detail(version="live")` '
+        "first if unsure of the page's state. Returns the page detail.",
+    )
+    def pages_actions_unpublish(
+        page_id: int, recursive: bool = False
+    ) -> dict[str, object]:
+        return trim_data(
+            dispatch.call_operation(
+                "pages_actions_unpublish",
+                path_params={"page_id": page_id},
+                body={"recursive": recursive},
+            )
+        )
+
+    @wagtail_tool(
+        server,
+        name="pages_actions_copy",
+        annotations=WRITE,
+        description="Copy a page (and, with `recursive`, its subtree) to "
+        "`destination_id` (a page id; omit to copy in place). `keep_live` "
+        "controls whether the copy is published. `slug`/`title` override the "
+        "copied values. Requires add permission. Returns the new page detail.",
+    )
+    def pages_actions_copy(
+        page_id: int,
+        destination_id: int | None = None,
+        recursive: bool = False,
+        keep_live: bool = True,
+        slug: str | None = None,
+        title: str | None = None,
+    ) -> dict[str, object]:
+        body: dict = {"recursive": recursive, "keep_live": keep_live}
+        if destination_id is not None:
+            body["destination_id"] = destination_id
+        if slug is not None:
+            body["slug"] = slug
+        if title is not None:
+            body["title"] = title
+        return trim_data(
+            dispatch.call_operation(
+                "pages_actions_copy", path_params={"page_id": page_id}, body=body
+            )
+        )
+
+    @wagtail_tool(
+        server,
+        name="pages_actions_move",
+        annotations=WRITE,
+        description="Move a page relative to `destination_id`. `position` "
+        "controls placement: pass 'first-child' or 'last-child' to move the "
+        "page UNDER `destination_id` as a child; 'left', 'right', 'first-sibling' "
+        "or 'last-sibling' to move it as a sibling of `destination_id` (its parent "
+        "becomes the destination's own parent). Without a child position the page "
+        "becomes a sibling. Requires change permission. Returns the page detail.",
+    )
+    def pages_actions_move(
+        page_id: int, destination_id: int, position: str | None = None
+    ) -> dict[str, object]:
+        body: dict = {"destination_id": destination_id}
+        if position is not None:
+            body["position"] = position
+        return trim_data(
+            dispatch.call_operation(
+                "pages_actions_move", path_params={"page_id": page_id}, body=body
+            )
+        )
+
+    @wagtail_tool(
+        server,
+        name="pages_actions_revert",
+        annotations=WRITE,
+        description="Revert a page to an earlier revision, replacing the current "
+        "content with that revision's and creating a new revision. `revision_id` "
+        "comes from `pages_revisions_list`. Requires change permission. Returns "
+        "the reverted page detail.",
+    )
+    def pages_actions_revert(page_id: int, revision_id: int) -> dict[str, object]:
+        return trim_data(
+            dispatch.call_operation(
+                "pages_actions_revert",
+                path_params={"page_id": page_id},
+                body={"revision_id": revision_id},
+            )
+        )
+
+    @wagtail_tool(
+        server,
+        name="pages_actions_convert_alias",
+        annotations=WRITE,
+        description="Convert an alias page (created by `pages_actions_create_alias`) "
+        "into a regular, independent page. Irreversible distinction from the "
+        "aliased page. Requires change permission. Returns the converted page "
+        "detail.",
+    )
+    def pages_actions_convert_alias(page_id: int) -> dict[str, object]:
+        return trim_data(
+            dispatch.call_operation(
+                "pages_actions_convert_alias", path_params={"page_id": page_id}
+            )
+        )
+
+    @wagtail_tool(
+        server,
+        name="pages_actions_create_alias",
+        annotations=WRITE,
+        description="Create an alias of a published page (`page_id`), which "
+        "mirrors the original's content until converted. `destination_id` "
+        "places the alias (omit for the same parent); `recursive` aliases the "
+        "subtree. Requires add permission. Returns the new alias page detail.",
+    )
+    def pages_actions_create_alias(
+        page_id: int,
+        destination_id: int | None = None,
+        recursive: bool = False,
+        slug: str | None = None,
+    ) -> dict[str, object]:
+        body: dict = {"recursive": recursive}
+        if destination_id is not None:
+            body["destination_id"] = destination_id
+        if slug is not None:
+            body["slug"] = slug
+        return trim_data(
+            dispatch.call_operation(
+                "pages_actions_create_alias",
+                path_params={"page_id": page_id},
+                body=body,
+            )
+        )
+
+    @wagtail_tool(
+        server,
+        name="pages_actions_copy_for_translation",
+        annotations=WRITE,
+        description="Copy a page for translation into another `locale` (a "
+        "language code string, e.g. 'fr'). `copy_parents` also translates "
+        "untranslated ancestors; `recursive` covers the subtree; `alias` creates "
+        "aliases instead of copies. Requires add permission. Returns the new "
+        "translated page detail.",
+    )
+    def pages_actions_copy_for_translation(
+        page_id: int,
+        locale: str,
+        copy_parents: bool = False,
+        alias: bool = False,
+        recursive: bool = False,
+    ) -> dict[str, object]:
+        return trim_data(
+            dispatch.call_operation(
+                "pages_actions_copy_for_translation",
+                path_params={"page_id": page_id},
+                body={
+                    "locale": locale,
+                    "copy_parents": copy_parents,
+                    "alias": alias,
+                    "recursive": recursive,
+                },
+            )
+        )
+
+    @wagtail_tool(
+        server,
+        name="pages_revisions_list",
+        annotations=READ_ONLY,
+        description="List a page's revisions (most recent first), each with id, "
+        "created_at, and object_str. Use the ids here with `pages_actions_revert` "
+        "and `pages_revisions_detail`. Paginated via `limit`/`offset`.",
+    )
+    def pages_revisions_list(
+        page_id: int, limit: int = 20, offset: int = 0
+    ) -> dict[str, object]:
+        data = dispatch.call_operation(
+            "pages_revisions_list",
+            path_params={"page_id": page_id},
+            query={"limit": limit, "offset": offset},
+        )
+        return {
+            "count": data.get("count", len(data.get("items", []))),
+            "items": [trim_revision(item) for item in data.get("items", [])],
+        }
+
+    @wagtail_tool(
+        server,
+        name="pages_revisions_detail",
+        annotations=READ_ONLY,
+        description="Get one revision's detail, including the full content "
+        "snapshot (`content_object`) at that point in time. Use with "
+        "`pages_actions_revert` to inspect before reverting.",
+    )
+    def pages_revisions_detail(page_id: int, revision_id: int) -> dict[str, object]:
+        data = dispatch.call_operation(
+            "pages_revisions_detail",
+            path_params={"page_id": page_id, "revision_id": revision_id},
+        )
+        trimmed = trim_revision(data)
+        content_object = data.get("content_object")
+        if isinstance(content_object, dict):
+            trimmed["content_object"] = trim_data(content_object)
+        return trimmed
+
+
+_REVISION_KEEP = (
+    "id",
+    "object_id",
+    "created_at",
+    "user_id",
+    "object_str",
+    "approved_go_live_at",
+)
+
+
+def trim_revision(item: dict) -> dict:
+    """Trim a RevisionSchema item to the fields an agent needs."""
+    return {k: v for k, v in item.items() if k in _REVISION_KEEP}

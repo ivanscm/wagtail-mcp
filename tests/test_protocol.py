@@ -78,6 +78,16 @@ def test_initialize_and_tools_list(client, token):
         "pages_update",
         "pages_delete",
         "pages_actions_delete",
+        "pages_actions_publish",
+        "pages_actions_unpublish",
+        "pages_actions_copy",
+        "pages_actions_move",
+        "pages_actions_revert",
+        "pages_actions_convert_alias",
+        "pages_actions_create_alias",
+        "pages_actions_copy_for_translation",
+        "pages_revisions_list",
+        "pages_revisions_detail",
     }
 
 
