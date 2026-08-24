@@ -132,3 +132,68 @@ def _suffix(filename: str) -> str:
     if dot == -1:
         return ""
     return filename[dot:].lower()
+
+
+def _is_collection_required_error(err: APIError) -> bool:
+    """Whether an ``APIError`` is the v3 'collection is required' 422.
+
+    Projects with multiple Collections require an explicit ``collection_id`` on
+    image/document uploads; ``build_image_form``/``build_document_form`` mark the
+    ``collection`` field required. When only the Root collection exists the
+    field is hidden/optional, so a bare upload succeeds there. We detect this
+    error to trigger the root-collection fallback.
+    """
+    if err.status != 422:
+        return False
+    for item in err.problem.get("errors") or []:
+        loc = item.get("loc") or []
+        if "collection" in loc and item.get("type") == "required":
+            return True
+    return False
+
+
+def _root_collection_id():
+    """Return the id of the project's root collection for the media type.
+
+    The v3 API does not expose Collections (only ``ImageCreateSchema``/"
+    ``DocumentCreateSchema`` accept a ``collection_id`` form field), so we read
+    the migration-seeded root collection directly via the ORM. This is the
+    per-project default Wagtail's own upload forms fall back to.
+    """
+    from wagtail.models import Collection
+
+    return Collection.get_first_root_node().id
+
+
+def perform_upload(
+    dispatch,
+    operation_id: str,
+    *,
+    title: str,
+    filename: str,
+    payload: bytes,
+    mime: str,
+    collection_id: int | None = None,
+) -> dict | None:
+    """Dispatch a media upload, adding a root-collection fallback.
+
+    ``operation_id`` is ``images_create`` or ``documents_create``. When
+    ``collection_id`` is given it is passed through to the v3 form. When
+    omitted we first try without it; if the API replies 422 specifically
+    because ``collection`` is required (a project with multiple collections),
+    we retry once with the root collection so a naive call still succeeds.
+
+    ``dispatch`` is the ``wagtail_mcp.dispatch`` module (injected so the tool
+    modules own their imports and tests can mock ``dispatch._client``).
+    """
+    form: dict = {"title": title}
+    if collection_id is not None:
+        form["collection_id"] = collection_id
+    files = {"file": (filename, payload, mime)}
+    try:
+        return dispatch.call_operation(operation_id, form=form, files=files)
+    except APIError as err:
+        if collection_id is None and _is_collection_required_error(err):
+            form["collection_id"] = _root_collection_id()
+            return dispatch.call_operation(operation_id, form=form, files=files)
+        raise

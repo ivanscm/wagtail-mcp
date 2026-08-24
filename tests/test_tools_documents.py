@@ -147,3 +147,23 @@ def test_documents_create_invalid_base64_is_error(client, token):
 def test_documents_detail_missing_is_error(client, token):
     raw = call_tool_raw(client, token, "documents_detail", document_id=999999)
     assert raw["isError"] is True
+
+
+def test_documents_create_passes_collection_id_through(client, token):
+    """An explicit ``collection_id`` is forwarded and stored on the document."""
+    from wagtail.models import Collection
+
+    root = Collection.get_first_root_node()
+    child = root.add_child(name="Reports")
+    created = call_tool(
+        client,
+        token,
+        "documents_create",
+        title="Quarterly",
+        content_base64=TXT_BASE64,
+        filename="quarterly.txt",
+        collection_id=child.id,
+    )
+    assert created["title"] == "Quarterly"
+    doc = get_document_model().objects.get(pk=created["id"])
+    assert doc.collection_id == child.id

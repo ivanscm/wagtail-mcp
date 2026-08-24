@@ -11,6 +11,7 @@ from wagtail_mcp.tools.common import (
     READ_ONLY,
     WRITE,
     decode_upload,
+    perform_upload,
     shape_list,
     trim,
     wagtail_tool,
@@ -59,23 +60,31 @@ def register(server):
         server,
         name="documents_create",
         annotations=WRITE,
-        description="Upload a new document. Provide the file contents as "
-        "base64 in `content_base64` with a `filename`; `content_type` is "
-        "inferred from the filename's extension (e.g. .pdf/.txt/.md) when "
-        "omitted. `title` labels it. Returns the created document's detail "
-        "(including its `download_url`).",
+        description="Upload a new document. Provide the raw file bytes as base64 "
+        "in `content_base64` (the base64 string of the file contents), plus a "
+        "`filename`; `content_type` is inferred from the filename's extension "
+        "(e.g. .pdf/.txt/.md) when omitted, or pass it directly. `title` labels "
+        "the document. `collection_id` optionally picks a specific Collection; "
+        "when omitted the project's default/root collection is used "
+        "automatically. Returns the created document's detail (including its "
+        "`download_url`).",
     )
     def documents_create(
         title: str,
         content_base64: str,
         filename: str,
         content_type: str | None = None,
+        collection_id: int | None = None,
     ) -> dict[str, object]:
         _, payload, mime = decode_upload(content_base64, filename, content_type)
-        data = dispatch.call_operation(
+        data = perform_upload(
+            dispatch,
             "documents_create",
-            form={"title": title},
-            files={"file": (filename, payload, mime)},
+            title=title,
+            filename=filename,
+            payload=payload,
+            mime=mime,
+            collection_id=collection_id,
         )
         return trim_document(data)
 

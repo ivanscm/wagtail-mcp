@@ -81,9 +81,9 @@ class Person(
     ]
 
     api_fields = [
-        APIField("first_name"),
-        APIField("last_name"),
-        APIField("job_title"),
+        APIField("first_name", writable=True),
+        APIField("last_name", writable=True),
+        APIField("job_title", writable=True),
         APIField("image"),
     ]
 
