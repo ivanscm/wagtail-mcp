@@ -137,9 +137,14 @@ def _register_page_write_tools(server):
         description="Create a page as a draft (unless `publish` is true). "
         "`type` is the content type label (e.g. 'app_label.ModelName'); call "
         "`schema_detail` first for the type's fields. Markdown in "
-        "`body_markdown` is converted server-side. `parent_id` must be an "
-        "existing page id (see `pages_list`/`pages_find`). Returns the "
-        "created page detail.",
+        "`body_markdown` is converted server-side. NOTE: image embeds written "
+        "in markdown (`![alt](wagtail://image?id=N)`) are NOT preserved — the "
+        "v3 write sanitizer silently drops them. To embed an image, upload it "
+        "first with `images_create`, then write the body as a raw `db_html` "
+        "string via `api_call` (operation `pages_create`): `<embed "
+        'embedtype="image" id="N" format="right" alt="..."/>`. `parent_id` '
+        "must be an existing page id (see `pages_list`/`pages_find`). Returns "
+        "the created page detail.",
     )
     def pages_create(
         type: str,
@@ -167,10 +172,16 @@ def _register_page_write_tools(server):
         annotations=WRITE,
         description="Update an existing page. Only the fields you pass are "
         "changed (PATCH semantics). `body_markdown` is Markdown, converted "
-        "server-side. Pass `publish=True` to publish; otherwise the change "
-        "is saved as a draft revision, leaving the live page untouched. The "
-        "page's content type is read from the page itself, so you only need "
-        "its id. Returns the updated page detail.",
+        "server-side. NOTE: image embeds written in markdown "
+        "(`![alt](wagtail://image?id=N)`) are NOT preserved — the v3 write "
+        "sanitizer silently drops them. To embed an image, upload it first "
+        "with `images_create`, then write the body as a raw `db_html` string "
+        "via `api_call` (operation `pages_update`): `<embed "
+        'embedtype="image" id="N" format="right" alt="..."/>`. Pass '
+        "`publish=True` to publish; otherwise the change is saved as a draft "
+        "revision, leaving the live page untouched. The page's content type "
+        "is read from the page itself, so you only need its id. Returns the "
+        "updated page detail.",
     )
     def pages_update(
         page_id: int,
