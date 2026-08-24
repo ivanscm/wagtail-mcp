@@ -109,8 +109,39 @@ server from that file. Output goes to `evals/results/latest.json` (gitignored).
 
 ## First run results
 
-> TO BE FILLED BY CONTROLLER AFTER FIRST RUN
+First complete run: `eval-cUQ` (2026-08-24), 14 cells (7 cases × 2 arms), ~32 s,
+~101k tokens, **MCP arm 7/7 passed, baseline 2/7** (9/14 overall, 64%).
 
-Record per-arm pass/fail counts and any notable behavior here (e.g. whether the
-baseline refused-from-memory or hallucinated a result, and whether the `mcp`
-arm completed the mutations).
+Per case:
+
+| # | case | baseline | mcp |
+|---|------|:--------:|:---:|
+| 1 | whoami | ✅ (memory) | ✅ |
+| 2 | list child pages | ❌ | ✅ |
+| 3 | draft blog post + body | ❌ | ✅ |
+| 4 | image upload | ❌ | ✅ |
+| 5 | blog.Person snippet | ❌ | ✅ |
+| 6 | permanent redirect | ❌ | ✅ |
+| 7 | create-then-revert revision | ✅ (crosstalk) | ✅ |
+
+The `mcp` arm completed every mutating task against the live demo CMS. The
+baseline failed everything that requires real CMS state (it has no tools and
+is graded against actual state, so any told-you-so answer fails) — the two
+baseline passes are rubric artifacts, not tool evidence: case 1 (whoami)
+scores on the model naming `admin` from memory, and case 7 (revert) shares the
+CMS instance with the `mcp` arm, so its revision-count assertion can already
+be satisfied even though the baseline mutated nothing.
+
+### Caveats
+
+- **Eval noise.** Agent runs vary run-to-run; repeat before trusting a delta:
+  `just eval --repeat 3`.
+- **Arms share one CMS instance.** Both arms run against the *same* demo site,
+  so a shared-state grader can observe another arm's mutations (case 7 above).
+  Future refinement: add the arm label to each run's unique suffix so arms are
+  distinguishable / isolated.
+- **Baseline prose results are memory, not tool evidence.** whoami (case 1) is
+  deliberately gradeable from the correct answer regardless of arm.
+- **`revision_reverted` is a heuristic** (`count >= 2`), so it can pass without
+  a real revert if the seeded revision count already suffices; a future
+  exact-content assertion would pin it.

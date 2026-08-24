@@ -98,26 +98,6 @@ def _normalize_path(value: str) -> str:
     return value.strip().strip("/")
 
 
-def _slugify(title: str) -> str:
-    """Approximate Django's default ``slugify`` for ASCII titles.
-
-    The v3 API auto-slugs from the title using Django's ``slugify``
-    (lowercase, non-alphanumerics → ``-``, collapse repeats, trim dashes).
-    The model is told to create ASCII titles with a known shape, so this
-    approximation holds for the eval cases; if the grader ever sees a
-    mismatch it fails with a reason that reveals the actual slug.
-    """
-    s = title.strip().lower()
-    out = []
-    for ch in s:
-        if ch.isalnum():
-            out.append(ch)
-        elif out and out[-1] != "-":
-            out.append("-")
-    slug = "".join(out).strip("-")
-    return slug
-
-
 def whoami(output: str, context: dict[str, Any]) -> bool:
     """The model reports the authenticated Wagtail user.
 

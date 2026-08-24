@@ -107,6 +107,26 @@ in `local/superpowers/api-feedback-notes.md`; this is the cleaned-up copy.
 - **Suggested change.** Add a writable tags field to the image/document write
   schemas (or formally support taggable `api_fields` generically).
 
+## Collection is required on upload once a project has child Collections
+
+- **Observed.** `build_image_form`/`build_document_form` mark the `collection`
+  form field required only when the project has non-root Collections. With a
+  single root collection the field is optional and a bare upload succeeds;
+  once a child Collection exists, image/document create 422s with
+  `loc: ["collection"]`, `type: required`. The v3 API exposes **no Collections
+  list endpoint**, so the client cannot discover an id to send.
+- **Why it hurts.** In the demo site (bakerydemo-derived, which ships several
+  named collections under Root — "Bakeries", "BreadPage Images"), a bare
+  `images_create` silently 422s. An agent has no in-band way to learn the
+  required field's value.
+- **Suggested change.** Mirror the admin, which defaults to the root
+  collection when the caller omits one — the API could do the same, or expose
+  a `/collections/` resource.
+- **wagtail-mcp:** `perform_upload` takes an optional `collection_id`; when
+  omitted it tries the bare upload and retries once with the root `Collection`
+  id (read via the ORM, the same default Wagtail's own forms use) on the
+  specific 422.
+
 ## Snippet specifics worth surfacing
 
 - **Observed (write shape).** Snippet create/update bodies take fields

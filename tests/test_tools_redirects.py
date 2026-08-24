@@ -3,7 +3,7 @@ import itertools
 import pytest
 
 from test_protocol import call_tool, call_tool_raw
-from wagtail.models import Locale, Page
+from wagtail.models import Locale, Page, Site
 
 from wagtail_mcp.test.models import ContentPage
 
@@ -155,3 +155,66 @@ def test_redirects_find_missing_is_error(client, token):
     assert (
         "404" in raw["content"][0]["text"] or "Not Found" in raw["content"][0]["text"]
     )
+
+
+def test_redirects_create_with_link_and_site(client, token, wagtail_baseline):
+    # Cover the `redirect_link` + `site_id` create branches (link target + site
+    # scope, vs the page-target / all-sites branches exercised elsewhere).
+    root = Page.objects.get(depth=1)
+    site = Site.objects.create(
+        hostname="redirects-site.test", root_page=root, is_default_site=True
+    )
+    created = call_tool(
+        client,
+        token,
+        "redirects_create",
+        old_path="/old-link",
+        redirect_link="https://example.com/dest",
+        site_id=site.pk,
+    )
+    assert created["redirect_link"] == "https://example.com/dest"
+    assert created["site_id"] == site.pk
+
+    detail = call_tool(client, token, "redirects_detail", redirect_id=created["id"])
+    assert detail["redirect_link"] == "https://example.com/dest"
+    assert detail["site_id"] == site.pk
+
+
+def test_redirects_update_sets_site_scope(
+    client, token, created_redirect, wagtail_baseline
+):
+    # Pass an explicit `site_id` (the `update_body["site"] = site_id` branch).
+    root = Page.objects.get(depth=1)
+    site = Site.objects.create(
+        hostname="redirects-update-site.test", root_page=root, is_default_site=True
+    )
+    updated = call_tool(
+        client,
+        token,
+        "redirects_update",
+        redirect_id=created_redirect["id"],
+        site_id=site.pk,
+    )
+    assert updated["site_id"] == site.pk
+    assert updated["redirect_page_id"] is not None  # target preserved
+
+
+def test_redirects_update_switch_to_page_target(client, token, target_page):
+    # Start from a link-target redirect, then switch it to a page target — the
+    # `redirect_page_id is not None` + clear-link branch.
+    created = call_tool(
+        client,
+        token,
+        "redirects_create",
+        old_path="/old-switch",
+        redirect_link="https://example.com/start",
+    )
+    updated = call_tool(
+        client,
+        token,
+        "redirects_update",
+        redirect_id=created["id"],
+        redirect_page_id=target_page.pk,
+    )
+    assert updated["redirect_page_id"] == target_page.pk
+    assert updated["redirect_link"] in ("", None)
