@@ -1,6 +1,6 @@
 # Wagtail MCP
 
-> 🚧 this is the first vibe-coded draft of an MCP server prototype for Wagtail. Proceed with caution! Until this is ready, you might prefer to use [wagtail-cli](https://github.com/wagtail/wagtail-cli).
+> 🚧 this is the first vibe-coded draft of an MCP server prototype for Wagtail. Proceed with caution! Until this is ready, you might prefer to use [wagtail-cli](https://github.com/wagtail/wagtail-cli). See [CMS with AI, not AI CMS: Wagtail 8.0’s new API](https://wagtail.org/blog/cms-with-ai-not-ai-cms-wagtail-80s-new-api/) for context.
 
 A Model Context Protocol (MCP) server for Wagtail, exposing the Wagtail v3 API
 as model-callable tools. Point a Claude/OpenCode/Hermes-style agent at a
