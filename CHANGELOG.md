@@ -5,34 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.2.0] - 2026-09-18
 
 ### Added
 
-- Paginated tools (`pages_list`, `images_list`, `documents_list`, `snippets_list`,
-  `redirects_list`, `sites_list`, `locales_list`, and the revisions lists) now state the
-  site's maximum `limit` in their descriptions, read from Wagtail's `WAGTAILAPI_LIMIT_MAX`
-  setting (default 20), so agents no longer discover the cap from a 400 error.
-- `pages_create` and `pages_update` now accept the base page write fields
-  `slug`, `seo_title`, `search_description` and `show_in_menus`, plus a
-  `fields` dict for any other writable field of the page type (typed
-  arguments win on clashes). This removes the need for the `api_call` escape
-  hatch for common page edits, including the raw `db_html` body workaround
-  for image embeds.
-- `pages_detail` now reports `meta.seo_title` and `meta.search_description`
-  so agents can read back SEO edits.
-- `images_create` accepts an optional `description`; `images_update` takes
-  `title` and/or `description` with PATCH semantics.
+- Paginated tools now state the maximum `limit` in their descriptions, read from Wagtail's `WAGTAILAPI_LIMIT_MAX`.
+- `pages_create` and `pages_update` now accept a `fields` dict for any writable field of the page type.
+- `pages_detail` now reports `meta.seo_title` and `meta.search_description`.
+- `images_create` accepts an optional `description`.
+- `images_update` accepts `title` and `description`.
 
 ### Fixed
 
-- Detail tools no longer silently drop fields the v3 API returned. Responses
-  from `pages_detail`, `pages_find`, page/snippet create, update and action
-  tools, `*_revisions_detail`, `images_detail`, `documents_detail`,
-  `sites_detail`, `locales_detail`, and the redirect detail tools now pass
-  every field through, including empty strings and nulls — so an agent can
-  tell "field is empty" (e.g. `meta.seo_title: ""`) from "field not exposed".
-  List tools keep their compact summaries.
+- Make sure the package works with production-restricted `ALLOWED_HOSTS`
+- Detail tools no longer silently drop fields the v3 API returned.
 
 ## [0.1.0] - 2026-08-27
 
