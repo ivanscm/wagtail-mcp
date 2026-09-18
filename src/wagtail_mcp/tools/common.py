@@ -2,6 +2,7 @@ import base64
 import binascii
 import functools
 
+from django.conf import settings
 from mcp.server.mcpserver.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
@@ -48,6 +49,21 @@ def wagtail_tool(server, *, name, description, annotations):
         )
 
     return decorator
+
+
+def max_limit_hint() -> str:
+    """Sentence for paginated tool descriptions stating the v3 max ``limit``.
+
+    The v3 API rejects ``limit`` above ``WAGTAILAPI_LIMIT_MAX`` (default 20)
+    with a 400 ("limit cannot be higher than 20"), which agents otherwise
+    discover by failing a call; stating the cap in the description prevents
+    that. Read at tool-registration time so the descriptions match the
+    project's current setting. ``WAGTAILAPI_LIMIT_MAX = None`` disables the cap.
+    """
+    limit_max = getattr(settings, "WAGTAILAPI_LIMIT_MAX", 20)
+    if limit_max is None:
+        return "`limit` has no maximum."
+    return f"Maximum `limit` is {limit_max} (`WAGTAILAPI_LIMIT_MAX`)."
 
 
 def trim(item, meta_keys):

@@ -1,7 +1,8 @@
 """Inventory check: the exact curated tool surface, and that every tool carries
 MCP annotations (so clients get correct read-only/destructive/idempotent UX).
 
-This pins the full 60-tool surface delivered over the plan's tool tasks.
+This pins the full 60-tool surface delivered over the plan's tool tasks, plus
+the pagination limit stated in paginated tool descriptions.
 """
 
 import pytest
@@ -89,6 +90,19 @@ ANNOTATION_HINTS = (
     "openWorldHint",
 )
 
+#: Tools taking ``limit``/``offset``; their descriptions must state the cap.
+PAGINATED_TOOLS = (
+    "pages_list",
+    "pages_revisions_list",
+    "images_list",
+    "documents_list",
+    "snippets_list",
+    "snippets_revisions_list",
+    "redirects_list",
+    "sites_list",
+    "locales_list",
+)
+
 
 @pytest.mark.django_db
 def test_exact_tool_inventory(client, token):
@@ -112,3 +126,59 @@ def _inventory_diff(actual):
     missing = EXPECTED_TOOLS - actual
     extra = actual - EXPECTED_TOOLS
     return f"\nmissing: {sorted(missing)}\nextra: {sorted(extra)}"
+
+
+def _tools_by_name(client, token):
+    response = post(client, TOOLS_LIST, token)
+    assert response.status_code == 200
+    return {tool["name"]: tool for tool in response.json()["result"]["tools"]}
+
+
+@pytest.mark.django_db
+def test_paginated_tool_descriptions_state_the_default_limit(client, token):
+    """Every paginated tool's description states the v3 API's default cap.
+
+    The v3 API 400s on ``limit`` above ``WAGTAILAPI_LIMIT_MAX`` (default 20);
+    agents must learn the cap from the description, not from a failed call.
+    """
+    tools = _tools_by_name(client, token)
+    for name in PAGINATED_TOOLS:
+        assert (
+            "Maximum `limit` is 20 (`WAGTAILAPI_LIMIT_MAX`)."
+            in tools[name]["description"]
+        ), f"tool {name!r} description does not state the default limit max"
+
+
+@pytest.mark.django_db
+def test_paginated_tool_descriptions_follow_the_site_limit_max_setting(
+    client, token, settings
+):
+    """Descriptions are built at registration time from the site's setting.
+
+    A project that lowers ``WAGTAILAPI_LIMIT_MAX`` gets its own cap baked into
+    the tool descriptions, so agents never exceed it.
+    """
+    from wagtail_mcp.server import get_server
+
+    settings.WAGTAILAPI_LIMIT_MAX = 5
+    # Tool descriptions are frozen into the per-process server singleton;
+    # clear the cache so registration re-reads the (overridden) setting.
+    get_server.cache_clear()
+    try:
+        tools = _tools_by_name(client, token)
+    finally:
+        # Restore the default server for the remaining tests.
+        get_server.cache_clear()
+    for name in PAGINATED_TOOLS:
+        assert (
+            "Maximum `limit` is 5 (`WAGTAILAPI_LIMIT_MAX`)."
+            in tools[name]["description"]
+        ), f"tool {name!r} description does not state the site's limit max"
+
+
+def test_max_limit_hint_without_cap(settings):
+    """``WAGTAILAPI_LIMIT_MAX = None`` disables the cap; the hint says so."""
+    from wagtail_mcp.tools.common import max_limit_hint
+
+    settings.WAGTAILAPI_LIMIT_MAX = None
+    assert max_limit_hint() == "`limit` has no maximum."

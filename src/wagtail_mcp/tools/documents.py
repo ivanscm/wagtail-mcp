@@ -11,6 +11,7 @@ from wagtail_mcp.tools.common import (
     READ_ONLY,
     WRITE,
     decode_upload,
+    max_limit_hint,
     perform_upload,
     shape_list,
     trim,
@@ -29,7 +30,8 @@ def register(server):
         annotations=READ_ONLY,
         description="List documents, optionally filtered by `search` (matches "
         "title). Results are paginated: pass `limit`/`offset` and use "
-        "``next_offset``` from the response to get the next page.",
+        "``next_offset``` from the response to get the next page. "
+        f"{max_limit_hint()}",
     )
     def documents_list(
         search: str | None = None,

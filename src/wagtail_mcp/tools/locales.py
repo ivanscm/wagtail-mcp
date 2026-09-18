@@ -10,6 +10,7 @@ from wagtail_mcp.tools.common import (
     DESTRUCTIVE,
     READ_ONLY,
     WRITE,
+    max_limit_hint,
     trim,
     wagtail_tool,
 )
@@ -44,7 +45,8 @@ def register(server):
         description="List the locales in this Wagtail project: language code, "
         "display name, and whether each is the default. Results are "
         "paginated: pass `limit`/`offset` and use ``next_offset``` from the "
-        "response for the next page.",
+        "response for the next page. "
+        f"{max_limit_hint()}",
     )
     def locales_list(limit: int = 20, offset: int = 0) -> dict[str, object]:
         data = dispatch.call_operation(

@@ -13,6 +13,7 @@ from wagtail_mcp.tools.common import (
     DESTRUCTIVE,
     READ_ONLY,
     WRITE,
+    max_limit_hint,
     wagtail_tool,
 )
 
@@ -52,7 +53,8 @@ def register(server):
         annotations=READ_ONLY,
         description="List every redirect: old path, permanence, and target. "
         "Results are paginated: pass `limit`/`offset` and use "
-        "``next_offset``` from the response to get the next page.",
+        "``next_offset``` from the response to get the next page. "
+        f"{max_limit_hint()}",
     )
     def redirects_list(limit: int = 20, offset: int = 0) -> dict[str, object]:
         data = dispatch.call_operation(

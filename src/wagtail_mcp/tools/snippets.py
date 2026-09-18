@@ -19,6 +19,7 @@ from wagtail_mcp.tools.common import (
     DESTRUCTIVE,
     READ_ONLY,
     WRITE,
+    max_limit_hint,
     shape_list,
     trim,
     wagtail_tool,
@@ -64,7 +65,8 @@ def register(server):
         description="List snippets of one `type` (a model label like "
         "'app_label.ModelName'). `search` does a partial text match; paginate "
         "with `limit`/`offset` and follow ```next_offset``` from the response. "
-        "Call `schema_list` to discover the API-enabled snippet types.",
+        "Call `schema_list` to discover the API-enabled snippet types. "
+        f"{max_limit_hint()}",
     )
     def snippets_list(
         type: str,
@@ -180,7 +182,8 @@ def register(server):
         description="List a draftable snippet's revisions (most recent first), "
         "each with id, created_at and object_str. Use the ids here with "
         "`snippets_revisions_detail` and `snippets_actions_revert`. Requires "
-        "the type to be a RevisionMixin model. Paginated via `limit`/`offset`.",
+        "the type to be a RevisionMixin model. Paginated via `limit`/`offset`. "
+        f"{max_limit_hint()}",
     )
     def snippets_revisions_list(
         type: str, snippet_id: int, limit: int = 20, offset: int = 0

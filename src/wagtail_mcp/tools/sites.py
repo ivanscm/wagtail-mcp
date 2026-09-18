@@ -11,6 +11,7 @@ from wagtail_mcp.tools.common import (
     DESTRUCTIVE,
     READ_ONLY,
     WRITE,
+    max_limit_hint,
     wagtail_tool,
 )
 
@@ -47,7 +48,8 @@ def register(server):
         description="List the sites in this Wagtail project: hostname, port, "
         "site name, and their root page. Results are paginated: pass "
         "`limit`/`offset` and use ``next_offset``` from the response for the "
-        "next page.",
+        "next page. "
+        f"{max_limit_hint()}",
     )
     def sites_list(limit: int = 20, offset: int = 0) -> dict[str, object]:
         data = dispatch.call_operation(

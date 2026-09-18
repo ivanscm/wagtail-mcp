@@ -11,6 +11,7 @@ from wagtail_mcp.tools.common import (
     DESTRUCTIVE,
     READ_ONLY,
     WRITE,
+    max_limit_hint,
     shape_list,
     trim,
     wagtail_tool,
@@ -39,7 +40,8 @@ def register(server):
         description="List pages, optionally filtered. `child_of` (page id or "
         "'root') or `descendant_of` restricts to a branch; `search` does a "
         "full-text search. Results are paginated: pass `limit`/`offset` and use "
-        "```next_offset``` from the response to get the next page.",
+        "```next_offset``` from the response to get the next page. "
+        f"{max_limit_hint()}",
     )
     def pages_list(
         child_of: int | str | None = None,
@@ -433,7 +435,8 @@ def _register_page_action_tools(server):
         annotations=READ_ONLY,
         description="List a page's revisions (most recent first), each with id, "
         "created_at, and object_str. Use the ids here with `pages_actions_revert` "
-        "and `pages_revisions_detail`. Paginated via `limit`/`offset`.",
+        "and `pages_revisions_detail`. Paginated via `limit`/`offset`. "
+        f"{max_limit_hint()}",
     )
     def pages_revisions_list(
         page_id: int, limit: int = 20, offset: int = 0
