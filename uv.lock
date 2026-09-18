@@ -664,7 +664,7 @@ name = "exceptiongroup"
 version = "1.3.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "typing-extensions", marker = "python_full_version < '3.12'" },
+    { name = "typing-extensions", marker = "python_full_version < '3.11'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/50/79/66800aadf48771f6b62f7eb014e352e5d06856655206165d775e675a02c9/exceptiongroup-1.3.1.tar.gz", hash = "sha256:8b412432c6055b0b7d14c310000ae93352ed6754f70fa8f7c34141f91c4e3219", size = 30371, upload-time = "2025-11-21T23:01:54.787Z" }
 wheels = [
@@ -1767,7 +1767,8 @@ wheels = [
 
 [[package]]
 name = "wagtail"
-source = { directory = "../wagtail" }
+version = "8.0"
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anyascii" },
     { name = "beautifulsoup4" },
@@ -1791,61 +1792,10 @@ dependencies = [
     { name = "telepath" },
     { name = "willow", extra = ["heif"] },
 ]
-
-[package.metadata]
-requires-dist = [
-    { name = "anyascii", specifier = ">=0.1.5" },
-    { name = "azure-identity", marker = "extra == 'testing'", specifier = ">=1,<2" },
-    { name = "azure-mgmt-cdn", marker = "extra == 'testing'", specifier = ">=12,<15" },
-    { name = "azure-mgmt-frontdoor", marker = "extra == 'testing'", specifier = ">=1,<3" },
-    { name = "azure-mgmt-subscription", marker = "extra == 'testing'", specifier = ">=2,<4" },
-    { name = "beautifulsoup4", specifier = ">=4.13.3,<5" },
-    { name = "boto3", marker = "extra == 'testing'", specifier = ">=1.28,<2" },
-    { name = "coverage", marker = "extra == 'testing'", specifier = ">=3.7.0" },
-    { name = "curlylint", marker = "extra == 'testing'", specifier = "==0.13.1" },
-    { name = "django", specifier = ">=5.2" },
-    { name = "django-filter", specifier = ">=23.3" },
-    { name = "django-modelcluster", specifier = ">=6.5,<7.0" },
-    { name = "django-ninja", specifier = ">=1.6.3,<2.0" },
-    { name = "django-pattern-library", marker = "extra == 'testing'", specifier = ">=0.7" },
-    { name = "django-permissionedforms", specifier = ">=0.1,<1.0" },
-    { name = "django-stubs", marker = "extra == 'testing'", specifier = "==6.0.9" },
-    { name = "django-taggit", specifier = ">=5.0,<7" },
-    { name = "django-tasks", specifier = ">=0.9,<0.13" },
-    { name = "django-treebeard", specifier = ">=4.8,<6.0" },
-    { name = "djangorestframework", specifier = ">=3.18.0,<4.0" },
-    { name = "djhtml", marker = "extra == 'testing'", specifier = "==3.0.11" },
-    { name = "doc8", marker = "extra == 'testing'", specifier = "==2.0.0" },
-    { name = "draftjs-exporter", specifier = ">=7.1.0,<8.0" },
-    { name = "factory-boy", marker = "extra == 'testing'", specifier = ">=3.2" },
-    { name = "freezegun", marker = "extra == 'testing'", specifier = ">=0.3.8" },
-    { name = "jinja2", marker = "extra == 'testing'", specifier = ">=3.0,<3.2" },
-    { name = "laces", specifier = ">=0.1,<0.2" },
-    { name = "modelsearch", specifier = ">=1.3.2,<1.4" },
-    { name = "myst-parser", marker = "extra == 'docs'", specifier = ">=4.0.0,<6" },
-    { name = "openpyxl", specifier = ">=3.0.10,<4.0" },
-    { name = "pillow", specifier = ">=9.1.0" },
-    { name = "polib", marker = "extra == 'testing'", specifier = ">=1.1,<2.0" },
-    { name = "pydantic", specifier = ">=2,<3" },
-    { name = "pyenchant", marker = "extra == 'docs'", specifier = ">=3.3.0,<4" },
-    { name = "requests", specifier = ">=2.11.1,<3.0" },
-    { name = "responses", marker = "extra == 'testing'", specifier = ">=0.25,<1" },
-    { name = "ruff", marker = "extra == 'testing'", specifier = "==0.16.3" },
-    { name = "semgrep", marker = "extra == 'testing'", specifier = "==1.173.0" },
-    { name = "sphinx", marker = "extra == 'docs'", specifier = ">=7.3" },
-    { name = "sphinx-autobuild", marker = "extra == 'docs'", specifier = ">=0.6.0" },
-    { name = "sphinx-llm", marker = "extra == 'docs'", specifier = ">=0.2.1" },
-    { name = "sphinx-wagtail-theme", marker = "extra == 'docs'", specifier = ">=6.5.0,<7" },
-    { name = "sphinxcontrib-httpdomain", marker = "extra == 'docs'", specifier = ">=1.5.0" },
-    { name = "sphinxcontrib-openapi", marker = "extra == 'docs'", specifier = ">=0.9.0" },
-    { name = "sphinxcontrib-spelling", marker = "extra == 'docs'", specifier = ">=8,<9" },
-    { name = "swapper", specifier = ">=1.4,<2" },
-    { name = "tblib", marker = "extra == 'testing'", specifier = ">=3.0,<4.0" },
-    { name = "telepath", specifier = ">=0.3.1,<1" },
-    { name = "ty", marker = "extra == 'testing'", specifier = "==0.0.72" },
-    { name = "willow", extras = ["heif"], specifier = ">=1.11.0,<2" },
+sdist = { url = "https://files.pythonhosted.org/packages/01/ef/d600737c0687fca22ef14b905bd37f72e264b03be03318ae3157466a09b8/wagtail-8.0.tar.gz", hash = "sha256:8fb2aa39bb8ff9e7709ba848a1bba2fea332ce32368c7ba4820008c0cfcc0019", size = 7131769, upload-time = "2026-08-25T12:37:38.568Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/8f/a5/59476b1fa6151a0dcb2cb65bf724b8b8ca11a03f94327262bc3339e0b01e/wagtail-8.0-py3-none-any.whl", hash = "sha256:34dde727917ace7e4ab182054f78f01c2cc24d85ccc402932d3d5c6315a7cd00", size = 9835863, upload-time = "2026-08-25T12:37:31.063Z" },
 ]
-provides-extras = ["testing", "docs"]
 
 [[package]]
 name = "wagtail-mcp"
@@ -1870,7 +1820,7 @@ dev = [
 requires-dist = [
     { name = "django", specifier = ">=5.2" },
     { name = "mcp", specifier = "==2.0.0" },
-    { name = "wagtail", directory = "../wagtail" },
+    { name = "wagtail", specifier = ">=8.0" },
 ]
 
 [package.metadata.requires-dev]

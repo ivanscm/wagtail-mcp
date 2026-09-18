@@ -39,12 +39,6 @@ dependencies = [
     "mcp==2.0.0",
 ]
 
-# PyPI has no stable wagtail>=8.0 yet (only 8.0rc2), so point the local
-# resolution at the sibling checkout that ships the v3 API these tools call.
-# Published floor stays `wagtail>=8.0`; this override is dev-only.
-[tool.uv.sources]
-wagtail = { path = "../wagtail" }
-
 [project.urls]
 Homepage = "https://github.com/org-name-or-username/wagtail-mcp"
 Repository = "https://github.com/org-name-or-username/wagtail-mcp"
