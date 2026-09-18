@@ -118,6 +118,26 @@ def _client() -> DjangoClient:
     return DjangoClient()
 
 
+def _host_parts() -> tuple[str | None, str | None]:
+    """Resolve ``auth.current_host`` into ``(Host header, SERVER_PORT)`` parts.
+
+    Both ``openapi()`` and ``call_operation()`` forward the caller's real Host
+    into the in-process client: under a strict ``ALLOWED_HOSTS`` (production,
+    ``DEBUG=False``) Django's client default of ``testserver`` would fail host
+    validation, and absolute API URLs would resolve to the wrong host. Any
+    ``:port`` suffix is split off the value; the port is passed separately as
+    ``SERVER_PORT``.
+    """
+    host = auth.current_host.get()
+    if not host:
+        return None, None
+    if ":" in host:
+        hostname, _, candidate = host.rpartition(":")
+        if candidate.isdigit():
+            return hostname, candidate
+    return host, None
+
+
 @functools.cache
 def openapi() -> dict:
     """The live OpenAPI 3.1 document for the mounted v3 API (cached).
@@ -125,7 +145,13 @@ def openapi() -> dict:
     Cache is cleared with ``openapi.cache_clear()``; use ``clear_caches()`` to
     clear all dispatch caches at once.
     """
-    response = _client().request("GET", f"{MOUNT_PREFIX.rstrip('/')}/openapi.json")
+    host_header, port = _host_parts()
+    response = _client().request(
+        "GET",
+        f"{MOUNT_PREFIX.rstrip('/')}/openapi.json",
+        host=host_header,
+        port=port,
+    )
     if response.status_code != 200:
         raise APIError(
             response.status_code,
@@ -248,22 +274,12 @@ def call_operation(
     if resolved_token:
         headers = {"Authorization": f"Bearer {resolved_token}"}
 
-    # Forward the request's real Host into the in-process client so absolute
-    # API URLs (e.g. ``meta.detail_url``/``meta.html_url``) resolve to the
-    # caller's host rather than Django's hardcoded ``testserver``. Split any
-    # ``:port`` off the value; port is passed separately as SERVER_PORT.
-    host = auth.current_host.get()
-    host_header = None
-    port = None
-    if host:
-        if ":" in host:
-            hostname, _, candidate = host.rpartition(":")
-            if candidate.isdigit():
-                host_header, port = hostname, candidate
-            else:
-                host_header = host
-        else:
-            host_header = host
+    # Forward the request's real Host into the in-process client (see
+    # ``_host_parts``) so absolute API URLs (e.g. ``meta.detail_url``/
+    # ``meta.html_url``) resolve to the caller's host rather than Django's
+    # hardcoded ``testserver``, and host validation passes under strict
+    # ``ALLOWED_HOSTS``.
+    host_header, port = _host_parts()
 
     response = _client().request(
         method.upper(),

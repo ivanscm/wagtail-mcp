@@ -96,6 +96,29 @@ def test_openapi_cached_and_clearable():
     assert openapi() is not first
 
 
+def test_openapi_forwards_current_host(settings):
+    """With a strict ALLOWED_HOSTS, openapi() must forward the caller's Host.
+
+    Production runs with ``DEBUG=False`` and an explicit ``ALLOWED_HOSTS``
+    list, so Django's test client default of ``testserver`` fails host
+    validation and the in-process fetch of ``/openapi.json`` answers 400 —
+    breaking every tool call (they all resolve operations through the schema).
+    The dispatch layer must forward ``auth.current_host`` like
+    ``call_operation()`` does.
+    """
+    from wagtail_mcp import auth
+
+    settings.ALLOWED_HOSTS = ["cms.example.com"]
+    openapi.cache_clear()
+    context = auth.current_host.set("cms.example.com")
+    try:
+        schema = openapi()
+        assert "paths" in schema
+    finally:
+        auth.current_host.reset(context)
+        openapi.cache_clear()
+
+
 def test_pages_find_follows_redirect(root_page, token):
     # pages_find returns a 302 to the page-detail URL (like any HTTP client).
     hostname = "example.test"
