@@ -20,7 +20,9 @@ from wagtail_mcp.tools.common import (
 
 # Page meta keys worth exposing to an agent from a page list item.
 PAGE_LIST_META_KEYS = ("type", "slug", "locale", "html_url", "first_published_at")
-# Detail responses carry more context worth keeping.
+# Detail responses carry more context worth keeping. ``seo_title`` and
+# ``search_description`` live under ``meta`` on v3 reads (they are top-level
+# fields on writes), and are what an agent needs to read back SEO edits.
 PAGE_DETAIL_META_KEYS = (
     "type",
     "slug",
@@ -28,6 +30,8 @@ PAGE_DETAIL_META_KEYS = (
     "html_url",
     "parent",
     "show_in_menus",
+    "seo_title",
+    "search_description",
     "first_published_at",
 )
 
@@ -126,6 +130,31 @@ def _markdown_body(body_markdown: str | None) -> dict | None:
     return {"format": "db_markdown", "content": body_markdown}
 
 
+def _base_page_fields(
+    *,
+    slug: str | None,
+    seo_title: str | None,
+    search_description: str | None,
+    show_in_menus: bool | None,
+) -> dict:
+    """The explicitly-passed base page write fields, as a body fragment.
+
+    These are top-level fields in the v3 page create/patch schemas (unlike
+    most of their read counterparts, which sit under ``meta``). Omitted
+    arguments are dropped so PATCH semantics hold on update.
+    """
+    body: dict = {}
+    if slug is not None:
+        body["slug"] = slug
+    if seo_title is not None:
+        body["seo_title"] = seo_title
+    if search_description is not None:
+        body["search_description"] = search_description
+    if show_in_menus is not None:
+        body["show_in_menus"] = show_in_menus
+    return body
+
+
 def _register_page_write_tools(server):
     """Register the page write and destructive tools onto ``server``.
 
@@ -139,12 +168,15 @@ def _register_page_write_tools(server):
         description="Create a page as a draft (unless `publish` is true). "
         "`type` is the content type label (e.g. 'app_label.ModelName'); call "
         "`schema_detail` first for the type's fields. Markdown in "
-        "`body_markdown` is converted server-side. NOTE: image embeds written "
-        "in markdown (`![alt](wagtail://image?id=N)`) are NOT preserved — the "
+        "`body_markdown` is converted server-side. Base page fields "
+        "`slug`, `seo_title` and `search_description` are accepted; pass "
+        "`fields` for any other writable field of the type (typed arguments "
+        "win on key clashes). NOTE: image embeds written in markdown "
+        "(`![alt](wagtail://image?id=N)`) are NOT preserved — the "
         "v3 write sanitizer silently drops them. To embed an image, upload it "
-        "first with `images_create`, then write the body as a raw `db_html` "
-        "string via `api_call` (operation `pages_create`): `<embed "
-        'embedtype="image" id="N" format="right" alt="..."/>`. `parent_id` '
+        "first with `images_create`, then pass the body as a raw `db_html` "
+        'string via `fields` (e.g. `{"body": "<embed embedtype=\\"image\\" '
+        'id=\\"N\\" format=\\"right\\" alt=\\"...\\"/>"}`). `parent_id` '
         "must be an existing page id (see `pages_list`/`pages_find`). Returns "
         "the created page detail.",
     )
@@ -155,13 +187,27 @@ def _register_page_write_tools(server):
         body_markdown: str = "",
         publish: bool = False,
         slug: str | None = None,
+        seo_title: str | None = None,
+        search_description: str | None = None,
+        show_in_menus: bool | None = None,
+        fields: dict | None = None,
     ) -> dict[str, object]:
         meta = {"type": type, "parent_id": parent_id}
         if publish:
             meta["action"] = "publish"
-        body = {"meta": meta, "title": title}
-        if slug is not None:
-            body["slug"] = slug
+        # `fields` (type-specific write fields) goes in first so the typed
+        # arguments below — and the protected `meta` envelope — win on clashes.
+        body: dict = dict(fields or {})
+        body["meta"] = meta
+        body["title"] = title
+        body.update(
+            _base_page_fields(
+                slug=slug,
+                seo_title=seo_title,
+                search_description=search_description,
+                show_in_menus=show_in_menus,
+            )
+        )
         markdown = _markdown_body(body_markdown)
         if markdown is not None:
             body["body"] = markdown
@@ -174,12 +220,15 @@ def _register_page_write_tools(server):
         annotations=WRITE,
         description="Update an existing page. Only the fields you pass are "
         "changed (PATCH semantics). `body_markdown` is Markdown, converted "
-        "server-side. NOTE: image embeds written in markdown "
+        "server-side. Base page fields `slug`, `seo_title`, "
+        "`search_description` and `show_in_menus` are accepted; pass `fields` "
+        "for any other writable field of the type (see `schema_detail`; typed "
+        "arguments win on key clashes). NOTE: image embeds written in markdown "
         "(`![alt](wagtail://image?id=N)`) are NOT preserved — the v3 write "
         "sanitizer silently drops them. To embed an image, upload it first "
-        "with `images_create`, then write the body as a raw `db_html` string "
-        "via `api_call` (operation `pages_update`): `<embed "
-        'embedtype="image" id="N" format="right" alt="..."/>`. Pass '
+        "with `images_create`, then pass the body as a raw `db_html` string "
+        'via `fields` (e.g. `{"body": "<embed embedtype=\\"image\\" '
+        'id=\\"N\\" format=\\"right\\" alt=\\"...\\"/>"}`). Pass '
         "`publish=True` to publish; otherwise the change is saved as a draft "
         "revision, leaving the live page untouched. The page's content type "
         "is read from the page itself, so you only need its id. Returns the "
@@ -190,6 +239,11 @@ def _register_page_write_tools(server):
         title: str | None = None,
         body_markdown: str | None = None,
         publish: bool | None = None,
+        slug: str | None = None,
+        seo_title: str | None = None,
+        search_description: str | None = None,
+        show_in_menus: bool | None = None,
+        fields: dict | None = None,
     ) -> dict[str, object]:
         # Learn the page's own content type so the update envelope's
         # ``meta.type`` matches what v3's discriminated-union update schema
@@ -200,9 +254,20 @@ def _register_page_write_tools(server):
         meta = {"type": current["meta"]["type"]}
         if publish:
             meta["action"] = "publish"
-        body: dict = {"meta": meta}
+        # `fields` (type-specific write fields) goes in first so the typed
+        # arguments below — and the protected `meta` envelope — win on clashes.
+        body: dict = dict(fields or {})
+        body["meta"] = meta
         if title is not None:
             body["title"] = title
+        body.update(
+            _base_page_fields(
+                slug=slug,
+                seo_title=seo_title,
+                search_description=search_description,
+                show_in_menus=show_in_menus,
+            )
+        )
         markdown = _markdown_body(body_markdown)
         if markdown is not None:
             body["body"] = markdown

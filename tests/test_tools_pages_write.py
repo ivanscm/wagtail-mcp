@@ -138,6 +138,103 @@ def test_pages_update_changes_fields(client, token, site_root):
     assert "<h2>Updated</h2>" in page.body or "Updated" in page.body
 
 
+def test_pages_create_seo_fields(client, token, site_root):
+    result = call_tool(
+        client,
+        token,
+        "pages_create",
+        type="wagtail_mcp_test.ContentPage",
+        parent_id=site_root.pk,
+        title="SEO page",
+        slug="seo-page",
+        seo_title="Better search title",
+        search_description="A meta description for agents.",
+        show_in_menus=True,
+    )
+    page = _created_page(result, site_root)
+    assert page.slug == "seo-page"
+    assert page.seo_title == "Better search title"
+    assert page.search_description == "A meta description for agents."
+    assert page.show_in_menus is True
+    # The v3 read shape reports the SEO fields under `meta`; the detail tool
+    # must surface them so agents can read back what they wrote.
+    assert result["meta"]["seo_title"] == "Better search title"
+    assert result["meta"]["search_description"] == "A meta description for agents."
+    detail = call_tool(client, token, "pages_detail", page_id=result["id"])
+    assert detail["meta"]["seo_title"] == "Better search title"
+    assert detail["meta"]["search_description"] == "A meta description for agents."
+
+
+def test_pages_update_seo_fields(client, token, site_root):
+    created = call_tool(
+        client,
+        token,
+        "pages_create",
+        type="wagtail_mcp_test.ContentPage",
+        parent_id=site_root.pk,
+        title="SEO draft",
+        seo_title="Old title tag",
+        search_description="Old description",
+    )
+    result = call_tool(
+        client,
+        token,
+        "pages_update",
+        page_id=created["id"],
+        slug="new-slug",
+        seo_title="New title tag",
+        search_description="New description",
+        show_in_menus=True,
+    )
+    page = _created_page(result, site_root)
+    assert page.slug == "new-slug"
+    assert page.seo_title == "New title tag"
+    assert page.search_description == "New description"
+    assert page.show_in_menus is True
+    assert result["meta"]["seo_title"] == "New title tag"
+    assert result["meta"]["search_description"] == "New description"
+
+
+def test_pages_update_extra_fields(client, token, site_root):
+    # `fields` covers writable fields the tool has no typed argument for,
+    # including the raw db_html body workaround for image embeds.
+    created = call_tool(
+        client,
+        token,
+        "pages_create",
+        type="wagtail_mcp_test.ContentPage",
+        parent_id=site_root.pk,
+        title="Raw html",
+    )
+    result = call_tool(
+        client,
+        token,
+        "pages_update",
+        page_id=created["id"],
+        fields={"body": "<p>Raw <b>db_html</b> body</p>"},
+    )
+    page = _created_page(result, site_root)
+    assert "Raw <b>db_html</b> body" in page.body
+
+
+def test_pages_create_fields_typed_arguments_win(client, token, site_root):
+    # A key passed both via `fields` and as a typed argument resolves to the
+    # typed argument; `meta` in `fields` cannot clobber the envelope.
+    result = call_tool(
+        client,
+        token,
+        "pages_create",
+        type="wagtail_mcp_test.ContentPage",
+        parent_id=site_root.pk,
+        title="Clash",
+        seo_title="Typed wins",
+        fields={"seo_title": "Fields loses", "meta": {"type": "no.such.Model"}},
+    )
+    page = _created_page(result, site_root)
+    assert page.seo_title == "Typed wins"
+    assert result["meta"]["type"] == "wagtail_mcp_test.ContentPage"
+
+
 def test_pages_update_publish_true_publishes(client, token, site_root):
     created = call_tool(
         client,

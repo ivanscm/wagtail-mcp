@@ -67,7 +67,8 @@ def register(server):
         "`content_base64` (the base64 string of the file contents), plus a "
         "`filename`; `content_type` is inferred from the filename's extension "
         "(e.g. .png/.jpg/.gif/.webp) when omitted, or pass it directly. "
-        "`title` labels the image. `collection_id` optionally picks a specific "
+        "`title` labels the image; `description` is optional alt-text/caption "
+        "metadata. `collection_id` optionally picks a specific "
         "Collection; when omitted the project's default/root collection is used "
         "automatically. Returns the created image's detail (including its "
         "`download_url`).",
@@ -76,6 +77,7 @@ def register(server):
         title: str,
         content_base64: str,
         filename: str,
+        description: str | None = None,
         content_type: str | None = None,
         collection_id: int | None = None,
     ) -> dict[str, object]:
@@ -87,6 +89,7 @@ def register(server):
             filename=filename,
             payload=payload,
             mime=mime,
+            description=description,
             collection_id=collection_id,
         )
         return trim_image(data)
@@ -95,16 +98,25 @@ def register(server):
         server,
         name="images_update",
         annotations=WRITE,
-        description="Update an existing image's title. Only the fields you "
-        "pass are changed (PATCH semantics via the v3 API). Requires the "
-        "image's id from `images_list`/`images_detail`. Returns the updated "
-        "image detail.",
+        description="Update an existing image's title and/or description. "
+        "Only the fields you pass are changed (PATCH semantics via the v3 "
+        "API). Requires the image's id from `images_list`/`images_detail`. "
+        "Returns the updated image detail.",
     )
-    def images_update(image_id: int, title: str) -> dict[str, object]:
+    def images_update(
+        image_id: int,
+        title: str | None = None,
+        description: str | None = None,
+    ) -> dict[str, object]:
+        body = {
+            key: value
+            for key, value in {"title": title, "description": description}.items()
+            if value is not None
+        }
         data = dispatch.call_operation(
             "images_update",
             path_params={"image_id": image_id},
-            body={"title": title},
+            body=body,
         )
         return trim_image(data)
 

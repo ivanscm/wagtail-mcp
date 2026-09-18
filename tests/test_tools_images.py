@@ -104,6 +104,36 @@ def test_images_update(client, token):
     assert get_image_model().objects.get(pk=created["id"]).title == "After"
 
 
+def test_images_create_and_update_description(client, token):
+    created = call_tool(
+        client,
+        token,
+        "images_create",
+        title="Described",
+        description="A tiny pixel.",
+        content_base64=GIF_BASE64,
+        filename="desc.gif",
+    )
+    image = get_image_model().objects.get(pk=created["id"])
+    assert image.description == "A tiny pixel."
+    assert created["description"] == "A tiny pixel."
+
+    # PATCH semantics: updating the description leaves the title alone, and
+    # an update without a title is valid.
+    updated = call_tool(
+        client,
+        token,
+        "images_update",
+        image_id=created["id"],
+        description="Renamed alt",
+    )
+    assert updated["title"] == "Described"
+    assert updated["description"] == "Renamed alt"
+    image.refresh_from_db()
+    assert image.title == "Described"
+    assert image.description == "Renamed alt"
+
+
 def test_images_delete(client, token):
     created = call_tool(
         client,

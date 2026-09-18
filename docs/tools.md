@@ -45,8 +45,8 @@ Common conventions across tools:
 | `pages_list` | RO | List pages; filter by `child_of`/`descendant_of` (`'root'` or a page id) or `search`. | — |
 | `pages_find` | RO | Find a page by URL path (e.g. `'blog/my-post/'`); `site` is its hostname for non-default sites. | — |
 | `pages_detail` | RO | One page's detail; `version` live/draft; markdown by default. | — |
-| `pages_create` | WRITE | Create a page (draft unless `publish=True`). | `schema_detail` |
-| `pages_update` | WRITE | Patch an existing page (`publish=True` to publish the change). | `pages_detail` |
+| `pages_create` | WRITE | Create a page (draft unless `publish=True`); `slug`/`seo_title`/`search_description`/`show_in_menus` plus arbitrary type fields via `fields`. | `schema_detail` |
+| `pages_update` | WRITE | Patch an existing page (`publish=True` to publish the change); same field surface as `pages_create`. | `pages_detail` |
 | `pages_delete` | DEST | Permanently delete a page (and descendants). | — |
 | `pages_actions_delete` | DEST | Same delete via `/actions/delete/` (parity with the REST surface). | — |
 | `pages_actions_publish` | WRITE | Publish the latest revision. | `pages_revisions_list` |
@@ -62,6 +62,17 @@ Common conventions across tools:
 
 Page-specific notes:
 
+- `pages_create`/`pages_update` take the base page write fields (`slug`,
+  `seo_title`, `search_description`, `show_in_menus`) as typed arguments, and
+  accept any other writable field of the page type via a `fields` dict — call
+  `schema_detail(type)` first for the field list. On key clashes the typed
+  arguments win, and `fields` cannot override the `meta` envelope. `fields`
+  also accepts a raw `db_html` body (`{"body": "<p>...</p>"}`) — the working
+  path for image embeds, since Markdown image embeds are dropped by the v3
+  sanitizer (see the [escape hatch](escape-hatch.md)).
+- On reads, `seo_title`/`search_description` are reported under `meta` (the v3
+  read shape); on writes they are top-level fields — the tools handle the
+  mapping either way.
 - `pages_actions_unpublish` is **not idempotent**: unpublishing an
   already-unpublished page errors with 403, so check
   `pages_detail(version="live")` first if unsure.
@@ -78,8 +89,8 @@ Page-specific notes:
 |---|---|---|---|
 | `images_list` | RO | List images; optional `search` (matches title). | — |
 | `images_detail` | RO | One image's detail (dimensions, description, focal point, URLs, tags). | — |
-| `images_create` | WRITE | Upload an image (base64 + filename; content type inferred from extension). | — |
-| `images_update` | WRITE | Update an image's title. | `images_detail` |
+| `images_create` | WRITE | Upload an image (base64 + filename; content type inferred from extension); optional `description`. | — |
+| `images_update` | WRITE | Update an image's title and/or description (PATCH semantics). | `images_detail` |
 | `images_delete` | DEST | Permanently delete an image. | — |
 
 Upload notes: `content_base64` must be actual file bytes in base64 (not a URL
@@ -101,7 +112,8 @@ write schema (see [api-feedback](api-feedback.md)); they're read-only under
 
 Same upload conventions as images; documents accept arbitrary bytes (no
 content sniffing). Content types inferred from `.pdf`, `.txt`, `.md`,
-`.markdown`, `.csv`, `.json`, `.doc`, `.docx`.
+`.markdown`, `.csv`, `.json`, `.doc`, `.docx`. The v3 document write schema
+only exposes `title` (and `collection`), so `documents_update` is title-only.
 
 ## Snippets (12) — generic, keyed by type
 

@@ -189,6 +189,7 @@ def perform_upload(
     filename: str,
     payload: bytes,
     mime: str,
+    description: str | None = None,
     collection_id: int | None = None,
 ) -> dict | None:
     """Dispatch a media upload, adding a root-collection fallback.
@@ -203,6 +204,8 @@ def perform_upload(
     modules own their imports and tests can mock ``dispatch._client``).
     """
     form: dict = {"title": title}
+    if description is not None:
+        form["description"] = description
     if collection_id is not None:
         form["collection_id"] = collection_id
     files = {"file": (filename, payload, mime)}
