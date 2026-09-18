@@ -114,7 +114,7 @@ eval-setup:
     set -euo pipefail
     if [ "$(curl -s -o /dev/null -w '%{http_code}' --max-time 2 http://localhost:8000/mcp/ 2>/dev/null || true)" != "000" ]; then
         echo "The demo server appears to be running (reached /mcp/, method check answered)." >&2
-        echo "Stop it first (Ctrl+C on `just demo`, or kill the runserver) before eval-setup,"
+        echo "Stop it first (Ctrl+C on 'just demo', or kill the runserver) before eval-setup,"
         echo "because it will replace demo/db.sqlite3 and demo/media underneath it." >&2
         exit 1
     fi
@@ -125,8 +125,8 @@ eval-setup:
     uv run ./demo/manage.py create_demo_api_token
     echo
     echo "Demo reset complete. Run:"
-    echo "  1. `just demo` to start the server (or your own runserver) in another terminal"
-    echo "  2. `just eval` to run the suite"
+    echo "  1. 'just demo' to start the server (or your own runserver) in another terminal"
+    echo "  2. 'just eval' to run the suite"
 
 # Run the Promptfoo agent-behavior eval suite against the running demo site.
 # Requires the demo server to be up (`just demo` in another terminal). Exports
@@ -136,16 +136,16 @@ eval:
     #!/usr/bin/env bash
     set -euo pipefail
     if ! command -v promptfoo >/dev/null 2>&1; then
-        echo "promptfoo is not installed — run `just eval-init` first." >&2
+        echo "promptfoo is not installed — run 'just eval-init' first." >&2
         exit 1
     fi
     if [ ! -f demo/.demo_token ]; then
-        echo "demo/.demo_token is missing — run `just eval-setup` (and start the demo) first." >&2
+        echo "demo/.demo_token is missing — run 'just eval-setup' (and start the demo) first." >&2
         exit 1
     fi
     if [ "$(curl -s -o /dev/null -w '%{http_code}' --max-time 3 http://localhost:8000/mcp/ 2>/dev/null || true)" = "000" ]; then
         echo "The demo server/MCP endpoint does not respond at http://localhost:8000/mcp/." >&2
-        echo "Start it in another terminal with `just demo` (or your own runserver), then retry." >&2
+        echo "Start it in another terminal with 'just demo' (or your own runserver), then retry." >&2
         exit 1
     fi
     mkdir -p evals/results
