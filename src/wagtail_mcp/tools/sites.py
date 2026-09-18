@@ -12,11 +12,14 @@ from wagtail_mcp.tools.common import (
     READ_ONLY,
     WRITE,
     max_limit_hint,
+    shape_detail,
     wagtail_tool,
 )
 
 
-#: Response fields (SiteSchema has no ``meta`` block) worth surfacing.
+#: Response fields (SiteSchema has no ``meta`` block) worth surfacing in
+#: *list* items. Detail responses are passed through untrimmed (see
+#: ``shape_detail``).
 SITE_FIELDS = (
     "id",
     "hostname",
@@ -28,6 +31,7 @@ SITE_FIELDS = (
 
 
 def _trim_site(data):
+    """Trim a site *list* item to the whitelisted fields."""
     return {key: data[key] for key in SITE_FIELDS if key in data}
 
 
@@ -66,7 +70,7 @@ def register(server):
     )
     def sites_detail(site_id: int) -> dict[str, object]:
         data = dispatch.call_operation("sites_detail", path_params={"site_id": site_id})
-        return _trim_site(data)
+        return shape_detail(data)
 
     @wagtail_tool(
         server,
@@ -93,7 +97,7 @@ def register(server):
             "is_default_site": is_default_site,
         }
         data = dispatch.call_operation("sites_create", body=body)
-        return _trim_site(data)
+        return shape_detail(data)
 
     @wagtail_tool(
         server,
@@ -133,7 +137,7 @@ def register(server):
         data = dispatch.call_operation(
             "sites_update", path_params={"site_id": site_id}, body=body
         )
-        return _trim_site(data)
+        return shape_detail(data)
 
     @wagtail_tool(
         server,

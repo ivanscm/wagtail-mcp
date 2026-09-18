@@ -14,11 +14,14 @@ from wagtail_mcp.tools.common import (
     READ_ONLY,
     WRITE,
     max_limit_hint,
+    shape_detail,
     wagtail_tool,
 )
 
 
-#: Flat response fields (RedirectSchema has no ``meta`` block) worth surfacing.
+#: Flat response fields (RedirectSchema has no ``meta`` block) worth surfacing
+#: in *list* items. Detail responses are passed through untrimmed (see
+#: ``shape_detail``).
 REDIRECT_FIELDS = (
     "id",
     "old_path",
@@ -32,7 +35,7 @@ REDIRECT_FIELDS = (
 
 
 def _trim_redirect(data):
-    """Reduce a redirect dict to its flat scalar fields."""
+    """Reduce a redirect *list* item to its flat scalar fields."""
     return {key: data[key] for key in REDIRECT_FIELDS if key in data}
 
 
@@ -72,7 +75,7 @@ def register(server):
     )
     def redirects_find(old_path: str) -> dict[str, object]:
         data = dispatch.call_operation("redirects_find", query={"html_path": old_path})
-        return _trim_redirect(data)
+        return shape_detail(data)
 
     @wagtail_tool(
         server,
@@ -86,7 +89,7 @@ def register(server):
         data = dispatch.call_operation(
             "redirects_detail", path_params={"redirect_id": redirect_id}
         )
-        return _trim_redirect(data)
+        return shape_detail(data)
 
     @wagtail_tool(
         server,
@@ -113,7 +116,7 @@ def register(server):
         if site_id is not None:
             body["site"] = site_id
         data = dispatch.call_operation("redirects_create", body=body)
-        return _trim_redirect(data)
+        return shape_detail(data)
 
     @wagtail_tool(
         server,
@@ -173,7 +176,7 @@ def register(server):
             path_params={"redirect_id": redirect_id},
             body=update_body,
         )
-        return _trim_redirect(data)
+        return shape_detail(data)
 
     @wagtail_tool(
         server,

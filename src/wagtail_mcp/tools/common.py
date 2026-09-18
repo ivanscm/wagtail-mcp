@@ -66,6 +66,23 @@ def max_limit_hint() -> str:
     return f"Maximum `limit` is {limit_max} (`WAGTAILAPI_LIMIT_MAX`)."
 
 
+def shape_detail(data):
+    """Pass a v3 single-object (detail) response through unchanged.
+
+    Detail responses keep every field the API returned — including empty
+    strings and nulls — so an agent can tell "field is empty" from "field
+    not exposed" (silently dropping e.g. an empty ``seo_title`` forced
+    agents to guess and verify elsewhere). Only list responses are trimmed
+    for compactness (``shape_list``/``trim``). ``meta`` is moved last to
+    match the established output shape (identity fields first).
+    """
+    if isinstance(data, dict) and "meta" in data:
+        result = {k: v for k, v in data.items() if k != "meta"}
+        result["meta"] = data["meta"]
+        return result
+    return data
+
+
 def trim(item, meta_keys):
     """Reduce a v3 item dict to ``id``/title-ish keys plus a whitelisted ``meta``."""
     result = {

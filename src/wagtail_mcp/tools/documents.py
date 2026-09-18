@@ -13,13 +13,14 @@ from wagtail_mcp.tools.common import (
     decode_upload,
     max_limit_hint,
     perform_upload,
+    shape_detail,
     shape_list,
-    trim,
     wagtail_tool,
 )
 
 
-#: Document detail ``meta`` keys worth surfacing to an agent.
+#: Document *list* item ``meta`` keys worth surfacing to an agent. Detail
+#: responses are passed through untrimmed (see ``shape_detail``).
 DOCUMENT_META_KEYS = ("type", "detail_url", "download_url", "tags")
 
 
@@ -48,15 +49,15 @@ def register(server):
         server,
         name="documents_detail",
         annotations=READ_ONLY,
-        description="Get one document's detail: title and URLs (``detail_url`` "
-        "and ``download_url``). Use the id from `documents_list`. Rich "
-        "metadata (tags) is exposed under ``meta``.",
+        description="Get one document's detail: title, collection, and URLs "
+        "(``detail_url`` and ``download_url``). Use the id from "
+        "`documents_list`. Rich metadata (tags) is exposed under ``meta``.",
     )
     def documents_detail(document_id: int) -> dict[str, object]:
         data = dispatch.call_operation(
             "documents_detail", path_params={"document_id": document_id}
         )
-        return trim_document(data)
+        return shape_detail(data)
 
     @wagtail_tool(
         server,
@@ -88,7 +89,7 @@ def register(server):
             mime=mime,
             collection_id=collection_id,
         )
-        return trim_document(data)
+        return shape_detail(data)
 
     @wagtail_tool(
         server,
@@ -105,7 +106,7 @@ def register(server):
             path_params={"document_id": document_id},
             body={"title": title},
         )
-        return trim_document(data)
+        return shape_detail(data)
 
     @wagtail_tool(
         server,
@@ -119,10 +120,3 @@ def register(server):
             "documents_delete", path_params={"document_id": document_id}
         )
         return {"deleted": True, "document_id": document_id}
-
-
-def trim_document(data):
-    """Trim a document detail response to the fields an agent needs."""
-    result = {k: data.get(k) for k in ("id", "title") if k in data}
-    result["meta"] = trim(data, DOCUMENT_META_KEYS)["meta"]
-    return result

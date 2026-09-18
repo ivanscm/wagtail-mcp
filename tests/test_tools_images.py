@@ -69,6 +69,11 @@ def test_images_create_and_detail(client, token):
     assert detail["meta"]["download_url"]
     # Server-side image validation ran: dimensions were parsed from the GIF.
     assert detail["width"] == 1 and detail["height"] == 1
+    # Detail responses pass every API field through: focal point keys are
+    # present even when null, and the collection is identified.
+    assert detail["focal_point_x"] is None
+    assert detail["focal_point_y"] is None
+    assert detail["collection"]["id"]
 
 
 def test_images_list_includes_created(client, token):

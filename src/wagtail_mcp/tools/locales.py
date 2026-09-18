@@ -11,13 +11,15 @@ from wagtail_mcp.tools.common import (
     READ_ONLY,
     WRITE,
     max_limit_hint,
+    shape_detail,
     trim,
     wagtail_tool,
 )
 
 
-#: ``meta`` keys worth surfacing from a locale detail. LocaleSchema extends
-#: ``BaseSchema`` so its response carries a ``meta`` block (type/warnings).
+#: ``meta`` keys worth surfacing from a locale *list* item. LocaleSchema
+#: extends ``BaseSchema`` so responses carry a ``meta`` block (type/warnings).
+#: Detail responses are passed through untrimmed (see ``shape_detail``).
 LOCALE_META_KEYS = ("type",)
 
 #: Atomic locale response fields (outside ``meta``).
@@ -31,7 +33,7 @@ LOCALE_FIELDS = (
 
 
 def _trim_locale(data):
-    """Reduce a locale detail dict to its atomic fields + whitelisted meta."""
+    """Reduce a locale *list* item to its atomic fields + whitelisted meta."""
     result = {key: data[key] for key in LOCALE_FIELDS if key in data}
     result["meta"] = trim(data, LOCALE_META_KEYS)["meta"]
     return result
@@ -70,7 +72,7 @@ def register(server):
         data = dispatch.call_operation(
             "locales_detail", path_params={"locale_id": locale_id}
         )
-        return _trim_locale(data)
+        return shape_detail(data)
 
     @wagtail_tool(
         server,
@@ -84,7 +86,7 @@ def register(server):
         data = dispatch.call_operation(
             "locales_create", body={"language_code": language_code}
         )
-        return _trim_locale(data)
+        return shape_detail(data)
 
     @wagtail_tool(
         server,
@@ -99,7 +101,7 @@ def register(server):
             path_params={"locale_id": locale_id},
             body={"language_code": language_code},
         )
-        return _trim_locale(data)
+        return shape_detail(data)
 
     @wagtail_tool(
         server,

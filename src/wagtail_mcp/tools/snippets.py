@@ -20,28 +20,22 @@ from wagtail_mcp.tools.common import (
     READ_ONLY,
     WRITE,
     max_limit_hint,
+    shape_detail,
     shape_list,
-    trim,
     wagtail_tool,
 )
 
 
-#: Meta keys worth keeping from snippet list/detail items. ``type`` and
+#: Meta keys worth keeping from snippet *list* items. ``type`` and
 #: ``detail_url`` are the only stable ones; the atomic fields differ per model
-#: (captured by ``trim`` which keeps ``id``/``name``/``label`` etc.).
+#: (captured by ``trim`` which keeps ``id``/``name``/``label`` etc.). Detail
+#: responses are passed through untrimmed (see ``shape_detail``).
 SNIPPET_META_KEYS = ("type", "detail_url")
 
 
 def _type_param(type: str) -> dict:
     """Path params for a snippet endpoint, keyed by the URL's ``{type}``/``{pk}``."""
     return {"type": type}
-
-
-def _trim_snippet(data: dict) -> dict:
-    """Trim a single snippet detail response to atomic fields + whitelisted meta."""
-    result = {k: v for k, v in data.items() if not k.startswith("meta")}
-    result["meta"] = trim(data, SNIPPET_META_KEYS)["meta"]
-    return result
 
 
 def _payload(data: dict, publish: bool = False) -> dict:
@@ -101,7 +95,7 @@ def register(server):
             path_params={**_type_param(type), "pk": snippet_id},
             query={"version": version},
         )
-        return _trim_snippet(data)
+        return shape_detail(data)
 
     @wagtail_tool(
         server,
@@ -121,7 +115,7 @@ def register(server):
             path_params=_type_param(type),
             body=_payload(data, publish),
         )
-        return _trim_snippet(created)
+        return shape_detail(created)
 
     @wagtail_tool(
         server,
@@ -141,7 +135,7 @@ def register(server):
             path_params={**_type_param(type), "pk": snippet_id},
             body=_payload(data, publish),
         )
-        return _trim_snippet(updated)
+        return shape_detail(updated)
 
     @wagtail_tool(
         server,
@@ -218,11 +212,11 @@ def register(server):
                 "revision_id": revision_id,
             },
         )
-        trimmed = trim_revision(data)
+        result = shape_detail(data)
         content_object = data.get("content_object")
         if isinstance(content_object, dict):
-            trimmed["content_object"] = _trim_snippet(content_object)
-        return trimmed
+            result["content_object"] = shape_detail(content_object)
+        return result
 
     @wagtail_tool(
         server,
@@ -234,7 +228,7 @@ def register(server):
         "published snippet detail.",
     )
     def snippets_actions_publish(type: str, snippet_id: int) -> dict[str, object]:
-        return _trim_snippet(
+        return shape_detail(
             dispatch.call_operation(
                 "snippets_actions_publish",
                 path_params={**_type_param(type), "pk": snippet_id},
@@ -250,7 +244,7 @@ def register(server):
         "snippet detail.",
     )
     def snippets_actions_unpublish(type: str, snippet_id: int) -> dict[str, object]:
-        return _trim_snippet(
+        return shape_detail(
             dispatch.call_operation(
                 "snippets_actions_unpublish",
                 path_params={**_type_param(type), "pk": snippet_id},
@@ -270,7 +264,7 @@ def register(server):
     def snippets_actions_revert(
         type: str, snippet_id: int, revision_id: int
     ) -> dict[str, object]:
-        return _trim_snippet(
+        return shape_detail(
             dispatch.call_operation(
                 "snippets_actions_revert",
                 path_params={**_type_param(type), "pk": snippet_id},
@@ -295,7 +289,7 @@ def register(server):
             path_params={**_type_param(type), "pk": snippet_id},
             body={"locale": locale},
         )
-        return _trim_snippet(copied)
+        return shape_detail(copied)
 
 
 _REVISION_KEEP = (
@@ -309,9 +303,10 @@ _REVISION_KEEP = (
 
 
 def trim_revision(item: dict) -> dict:
-    """Trim a snippet RevisionSchema item to the fields an agent needs.
+    """Trim a snippet RevisionSchema *list* item to the fields an agent needs.
 
-    Mirrors the page revisions trimming so both revision surfaces are shaped
-    consistently for agents.
+    Mirrors the page revisions trimming so both revision list surfaces are
+    shaped consistently for agents. ``snippets_revisions_detail`` passes the
+    full revision through (``shape_detail``).
     """
     return {k: v for k, v in item.items() if k in _REVISION_KEEP}

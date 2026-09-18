@@ -65,6 +65,9 @@ def test_documents_create_and_detail(client, token):
     assert detail["title"] == "Readme"
     assert detail["meta"]["type"] == "wagtaildocs.Document"
     assert detail["meta"]["download_url"].endswith(".txt")
+    # Detail responses pass every API field through: the collection is
+    # identified even though no explicit collection was chosen.
+    assert detail["collection"]["id"]
 
 
 def test_documents_list_includes_created(client, token):

@@ -24,6 +24,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `images_create` accepts an optional `description`; `images_update` takes
   `title` and/or `description` with PATCH semantics.
 
+### Fixed
+
+- Detail tools no longer silently drop fields the v3 API returned. Responses
+  from `pages_detail`, `pages_find`, page/snippet create, update and action
+  tools, `*_revisions_detail`, `images_detail`, `documents_detail`,
+  `sites_detail`, `locales_detail`, and the redirect detail tools now pass
+  every field through, including empty strings and nulls — so an agent can
+  tell "field is empty" (e.g. `meta.seo_title: ""`) from "field not exposed".
+  List tools keep their compact summaries.
+
 ## [0.1.0] - 2026-08-27
 
 First release ✨🤖 vibe-coded prototype built with pi and Kimi K3.

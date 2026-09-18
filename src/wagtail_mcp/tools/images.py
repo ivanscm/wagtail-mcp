@@ -14,13 +14,14 @@ from wagtail_mcp.tools.common import (
     decode_upload,
     max_limit_hint,
     perform_upload,
+    shape_detail,
     shape_list,
-    trim,
     wagtail_tool,
 )
 
 
-#: Image detail ``meta`` keys worth surfacing to an agent.
+#: Image *list* item ``meta`` keys worth surfacing to an agent. Detail
+#: responses are passed through untrimmed (see ``shape_detail``).
 IMAGE_META_KEYS = ("type", "detail_url", "download_url", "tags")
 
 
@@ -50,14 +51,15 @@ def register(server):
         name="images_detail",
         annotations=READ_ONLY,
         description="Get one image's detail: dimensions, description, focal "
-        "point, and URLs (``detail_url`` and ``download_url``). Use the id "
-        "from `images_list`. Rich metadata (tags) is exposed under ``meta``.",
+        "point, collection, and URLs (``detail_url`` and ``download_url``). "
+        "Use the id from `images_list`. Rich metadata (tags) is exposed "
+        "under ``meta``.",
     )
     def images_detail(image_id: int) -> dict[str, object]:
         data = dispatch.call_operation(
             "images_detail", path_params={"image_id": image_id}
         )
-        return trim_image(data)
+        return shape_detail(data)
 
     @wagtail_tool(
         server,
@@ -92,7 +94,7 @@ def register(server):
             description=description,
             collection_id=collection_id,
         )
-        return trim_image(data)
+        return shape_detail(data)
 
     @wagtail_tool(
         server,
@@ -118,7 +120,7 @@ def register(server):
             path_params={"image_id": image_id},
             body=body,
         )
-        return trim_image(data)
+        return shape_detail(data)
 
     @wagtail_tool(
         server,
@@ -130,14 +132,3 @@ def register(server):
     def images_delete(image_id: int) -> dict[str, object]:
         dispatch.call_operation("images_delete", path_params={"image_id": image_id})
         return {"deleted": True, "image_id": image_id}
-
-
-def trim_image(data):
-    """Trim an image detail response to the fields an agent needs."""
-    result = {
-        k: data.get(k)
-        for k in ("id", "title", "width", "height", "description")
-        if k in data
-    }
-    result["meta"] = trim(data, IMAGE_META_KEYS)["meta"]
-    return result

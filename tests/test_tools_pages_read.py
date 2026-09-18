@@ -86,6 +86,20 @@ def test_pages_detail_live(client, token, site_root):
     assert result["meta"]["slug"] == "the-target"
 
 
+def test_pages_detail_keeps_empty_and_null_fields(client, token, site_root):
+    """Detail responses pass through every field the API returned, including
+    empty strings and nulls: an agent must be able to tell "field is empty"
+    from "field not exposed" (regression: empty meta.seo_title and
+    meta.search_description were silently dropped, so agents had to guess
+    the SEO state and verify it against the rendered HTML)."""
+    target = site_root.get_children()[0]
+    result = call_tool(client, token, "pages_detail", page_id=target.pk)
+    assert result["meta"]["seo_title"] == ""
+    assert result["meta"]["search_description"] == ""
+    assert result["meta"]["alias_of"] is None
+    assert result["meta"]["detail_url"]
+
+
 def test_pages_find_unknown_path_errors(client, token):
     raw = call_tool_raw(client, token, "pages_find", html_path="no-such-page/")
     assert raw["isError"] is True

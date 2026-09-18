@@ -12,28 +12,15 @@ from wagtail_mcp.tools.common import (
     READ_ONLY,
     WRITE,
     max_limit_hint,
+    shape_detail,
     shape_list,
-    trim,
     wagtail_tool,
 )
 
 
-# Page meta keys worth exposing to an agent from a page list item.
+# Page meta keys worth exposing to an agent from a page list item. Detail
+# responses are passed through untrimmed (see ``shape_detail``).
 PAGE_LIST_META_KEYS = ("type", "slug", "locale", "html_url", "first_published_at")
-# Detail responses carry more context worth keeping. ``seo_title`` and
-# ``search_description`` live under ``meta`` on v3 reads (they are top-level
-# fields on writes), and are what an agent needs to read back SEO edits.
-PAGE_DETAIL_META_KEYS = (
-    "type",
-    "slug",
-    "locale",
-    "html_url",
-    "parent",
-    "show_in_menus",
-    "seo_title",
-    "search_description",
-    "first_published_at",
-)
 
 
 def register(server):
@@ -80,7 +67,7 @@ def register(server):
         if site is not None:
             query["site"] = site
         data = dispatch.call_operation("pages_find", query=query)
-        return trim_data(data)
+        return shape_detail(data)
 
     @wagtail_tool(
         server,
@@ -102,17 +89,10 @@ def register(server):
         data = dispatch.call_operation(
             "pages_detail", path_params={"page_id": page_id}, query=query
         )
-        return trim_data(data)
+        return shape_detail(data)
 
     _register_page_write_tools(server)
     _register_page_action_tools(server)
-
-
-def trim_data(data):
-    """Trim a page detail response to the atomic fields + whitelisted meta."""
-    result = {k: v for k, v in data.items() if not k.startswith("meta")}
-    result["meta"] = trim(data, PAGE_DETAIL_META_KEYS)["meta"]
-    return result
 
 
 def _markdown_body(body_markdown: str | None) -> dict | None:
@@ -212,7 +192,7 @@ def _register_page_write_tools(server):
         if markdown is not None:
             body["body"] = markdown
         data = dispatch.call_operation("pages_create", body=body)
-        return trim_data(data)
+        return shape_detail(data)
 
     @wagtail_tool(
         server,
@@ -276,7 +256,7 @@ def _register_page_write_tools(server):
             path_params={"page_id": page_id},
             body=body,
         )
-        return trim_data(data)
+        return shape_detail(data)
 
     @wagtail_tool(
         server,
@@ -322,7 +302,7 @@ def _register_page_action_tools(server):
         "permission. Returns the published page detail.",
     )
     def pages_actions_publish(page_id: int) -> dict[str, object]:
-        return trim_data(
+        return shape_detail(
             dispatch.call_operation(
                 "pages_actions_publish", path_params={"page_id": page_id}
             )
@@ -341,7 +321,7 @@ def _register_page_action_tools(server):
     def pages_actions_unpublish(
         page_id: int, recursive: bool = False
     ) -> dict[str, object]:
-        return trim_data(
+        return shape_detail(
             dispatch.call_operation(
                 "pages_actions_unpublish",
                 path_params={"page_id": page_id},
@@ -373,7 +353,7 @@ def _register_page_action_tools(server):
             body["slug"] = slug
         if title is not None:
             body["title"] = title
-        return trim_data(
+        return shape_detail(
             dispatch.call_operation(
                 "pages_actions_copy", path_params={"page_id": page_id}, body=body
             )
@@ -396,7 +376,7 @@ def _register_page_action_tools(server):
         body: dict = {"destination_id": destination_id}
         if position is not None:
             body["position"] = position
-        return trim_data(
+        return shape_detail(
             dispatch.call_operation(
                 "pages_actions_move", path_params={"page_id": page_id}, body=body
             )
@@ -412,7 +392,7 @@ def _register_page_action_tools(server):
         "the reverted page detail.",
     )
     def pages_actions_revert(page_id: int, revision_id: int) -> dict[str, object]:
-        return trim_data(
+        return shape_detail(
             dispatch.call_operation(
                 "pages_actions_revert",
                 path_params={"page_id": page_id},
@@ -430,7 +410,7 @@ def _register_page_action_tools(server):
         "detail.",
     )
     def pages_actions_convert_alias(page_id: int) -> dict[str, object]:
-        return trim_data(
+        return shape_detail(
             dispatch.call_operation(
                 "pages_actions_convert_alias", path_params={"page_id": page_id}
             )
@@ -456,7 +436,7 @@ def _register_page_action_tools(server):
             body["destination_id"] = destination_id
         if slug is not None:
             body["slug"] = slug
-        return trim_data(
+        return shape_detail(
             dispatch.call_operation(
                 "pages_actions_create_alias",
                 path_params={"page_id": page_id},
@@ -481,7 +461,7 @@ def _register_page_action_tools(server):
         alias: bool = False,
         recursive: bool = False,
     ) -> dict[str, object]:
-        return trim_data(
+        return shape_detail(
             dispatch.call_operation(
                 "pages_actions_copy_for_translation",
                 path_params={"page_id": page_id},
@@ -529,11 +509,11 @@ def _register_page_action_tools(server):
             "pages_revisions_detail",
             path_params={"page_id": page_id, "revision_id": revision_id},
         )
-        trimmed = trim_revision(data)
+        result = shape_detail(data)
         content_object = data.get("content_object")
         if isinstance(content_object, dict):
-            trimmed["content_object"] = trim_data(content_object)
-        return trimmed
+            result["content_object"] = shape_detail(content_object)
+        return result
 
 
 _REVISION_KEEP = (
@@ -547,5 +527,9 @@ _REVISION_KEEP = (
 
 
 def trim_revision(item: dict) -> dict:
-    """Trim a RevisionSchema item to the fields an agent needs."""
+    """Trim a RevisionSchema *list* item to the fields an agent needs.
+
+    List items are trimmed for compactness; ``pages_revisions_detail`` passes
+    the full revision through (``shape_detail``).
+    """
     return {k: v for k, v in item.items() if k in _REVISION_KEEP}
