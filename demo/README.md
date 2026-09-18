@@ -12,10 +12,13 @@ just demo
 `just demo` runs, in order:
 
 1. `migrate` — bring the demo database up to date.
-2. `load_initial_data` — create the `admin` user (`admin` / `changeme`) and a
-   set of bakerydemo-style blog content.
+2. `load_initial_data` — create the `admin` user (`admin` / `changeme`), a
+   non-superuser `editor` in the Editors group (`editor` / `changeme`), a set of
+   bakerydemo-style blog content, a "Contact us" form page with submissions, a
+   site setting, and a "Blog review" workflow on the Blog section.
 3. `create_demo_api_token` — create (or refresh) an `mcp-demo` Wagtail API token
-   for `admin` and record its plaintext in **`demo/.demo_token`** (gitignored).
+   for `admin` and record its plaintext in **`demo/.demo_token`** (gitignored),
+   plus an `mcp-demo-editor` token for `editor` in **`demo/.demo_token_editor`**.
 4. `runserver` — serve the site at <http://localhost:8000/>.
 
 When the server is up:

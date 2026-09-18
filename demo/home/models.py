@@ -1,7 +1,18 @@
 from blog.blocks import BaseStreamBlock
 from django.db import models
-from wagtail.admin.panels import FieldPanel, MultiFieldPanel, PageChooserPanel
-from wagtail.fields import StreamField
+from modelcluster.fields import ParentalKey
+from wagtail.admin.panels import (
+    FieldPanel,
+    FieldRowPanel,
+    InlinePanel,
+    MultiFieldPanel,
+    PageChooserPanel,
+)
+from wagtail.api import APIField
+from wagtail.contrib.forms.models import AbstractEmailForm, AbstractFormField
+from wagtail.contrib.forms.panels import FormSubmissionsPanel
+from wagtail.contrib.settings.models import BaseSiteSetting, register_setting
+from wagtail.fields import RichTextField, StreamField
 from wagtail.models import Page
 
 
@@ -77,4 +88,61 @@ class HomePage(Page):
         ),
     ]
 
-    subpage_types = ["blog.BlogIndexPage"]
+    api_fields = [
+        APIField("image", writable=True),
+        APIField("hero_text", writable=True),
+        APIField("hero_cta", writable=True),
+        APIField("hero_cta_link", writable=True),
+        APIField("body", writable=True),
+        APIField("featured_section_3_title", writable=True),
+        APIField("featured_section_3", writable=True),
+    ]
+
+    subpage_types = ["blog.BlogIndexPage", "home.FormPage"]
+
+
+class FormField(AbstractFormField):
+    page = ParentalKey("FormPage", on_delete=models.CASCADE, related_name="form_fields")
+
+
+class FormPage(AbstractEmailForm):
+    """Contact form, to exercise form-related tasks (fields, submissions)."""
+
+    intro = RichTextField(blank=True)
+    thank_you_text = RichTextField(blank=True)
+
+    content_panels = AbstractEmailForm.content_panels + [
+        FormSubmissionsPanel(),
+        FieldPanel("intro"),
+        InlinePanel("form_fields", label="Form fields"),
+        FieldPanel("thank_you_text"),
+        MultiFieldPanel(
+            [
+                FieldRowPanel(
+                    [
+                        FieldPanel("from_address"),
+                        FieldPanel("to_address"),
+                    ]
+                ),
+                FieldPanel("subject"),
+            ],
+            "Email",
+        ),
+    ]
+
+    api_fields = [
+        APIField("intro", writable=True),
+        APIField("thank_you_text", writable=True),
+    ]
+
+    parent_page_types = ["home.HomePage"]
+    subpage_types = []
+
+
+@register_setting(icon="site")
+class SocialMediaSettings(BaseSiteSetting):
+    """Site-wide footer links, to exercise site settings tasks."""
+
+    instagram = models.URLField(blank=True)
+    mastodon = models.URLField(blank=True)
+    footer_text = models.CharField(max_length=255, blank=True)

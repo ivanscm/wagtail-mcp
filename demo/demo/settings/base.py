@@ -31,6 +31,8 @@ INSTALLED_APPS = [
     "home",
     "search",
     "wagtail.contrib.forms",
+    "wagtail.contrib.settings",
+    "wagtail.contrib.search_promotions",
     "wagtail.contrib.routable_page",
     "wagtail.contrib.redirects",
     "wagtail.embeds",
@@ -81,6 +83,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "wagtail.contrib.settings.context_processors.settings",
             ],
         },
     },
@@ -168,6 +171,14 @@ DATA_UPLOAD_MAX_NUMBER_FIELDS = 10_000
 # Wagtail settings
 
 WAGTAIL_SITE_NAME = "demo"
+
+# Localization, to exercise translation tasks.
+WAGTAIL_I18N_ENABLED = True
+
+WAGTAIL_CONTENT_LANGUAGES = LANGUAGES = [
+    ("en", "English"),
+    ("fr", "French"),
+]
 
 # Search
 # https://docs.wagtail.org/en/stable/topics/search/backends.html

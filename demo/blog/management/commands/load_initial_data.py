@@ -12,14 +12,22 @@ from typing import Any
 import wagtail
 
 from django.contrib.auth import get_user_model
-from django.contrib.auth.models import AbstractUser
+from django.contrib.auth.models import AbstractUser, Group
 from django.core.files.base import ContentFile
 from django.core.files.images import get_image_dimensions
 from django.core.management.base import BaseCommand, CommandError
 from django.utils.dateparse import parse_datetime
-from home.models import HomePage
+from home.models import FormField, FormPage, HomePage, SocialMediaSettings
+from wagtail.contrib.forms.models import FormSubmission
 from wagtail.images.models import Image
-from wagtail.models import Collection, Site
+from wagtail.models import (
+    Collection,
+    GroupApprovalTask,
+    Site,
+    Workflow,
+    WorkflowPage,
+    WorkflowTask,
+)
 from wagtail.rich_text import RichText
 from wagtail.users.models import UserProfile
 
@@ -823,4 +831,86 @@ class Command(BaseCommand):
 
         self.stdout.write(
             self.style.SUCCESS("Homepage updated with hero and blog section.")
+        )
+
+        self._create_editor_user(User)
+        self._create_contact_form(home)
+        self._create_site_settings(site)
+        self._create_blog_workflow(blog_index)
+
+    def _create_editor_user(self, User):
+        """A non-superuser in Wagtail's default Editors group (no publish rights)."""
+        editor, created = User.objects.get_or_create(
+            username="editor",
+            defaults={
+                "email": "editor@example.com",
+                "is_staff": False,
+                "is_active": True,
+                "first_name": "Eddie",
+                "last_name": "Editor",
+            },
+        )
+        editor.set_password("changeme")
+        editor.save()
+        editor.groups.add(Group.objects.get(name="Editors"))
+        self.stdout.write(
+            self.style.SUCCESS(
+                f"Editor user 'editor' / 'changeme' ({'created' if created else 'updated'})."
+            )
+        )
+
+    def _create_contact_form(self, home):
+        if FormPage.objects.child_of(home).filter(slug="contact").exists():
+            self.stdout.write("Contact form already exists; skipping.")
+            return
+        form_page = FormPage(
+            title="Contact us",
+            slug="contact",
+            intro="<p>Questions about our breads? Get in touch.</p>",
+            thank_you_text="<p>Thanks, we'll get back to you soon.</p>",
+            to_address="bakery@example.com",
+            from_address="noreply@example.com",
+            subject="New contact form submission",
+        )
+        home.add_child(instance=form_page)
+        for sort_order, (label, field_type) in enumerate(
+            [("Name", "singleline"), ("Email", "email"), ("Message", "multiline")]
+        ):
+            FormField.objects.create(
+                page=form_page,
+                sort_order=sort_order,
+                label=label,
+                field_type=field_type,
+                required=True,
+            )
+        form_page.save_revision().publish()
+        for name, email, message in [
+            ("Ana Gomez", "ana@example.com", "Do you sell rye flour?"),
+            ("Ben Ode", "ben@example.com", "Can I order a birthday loaf?"),
+            ("Cleo Park", "cleo@example.com", "Are your breads vegan?"),
+        ]:
+            FormSubmission.objects.create(
+                page=form_page,
+                form_data={"name": name, "email": email, "message": message},
+            )
+        self.stdout.write(self.style.SUCCESS("Created contact form with submissions."))
+
+    def _create_site_settings(self, site):
+        settings = SocialMediaSettings.for_site(site)
+        settings.instagram = settings.instagram or "https://instagram.com/wagtailbakery"
+        settings.footer_text = settings.footer_text or "Baked with Wagtail"
+        settings.save()
+
+    def _create_blog_workflow(self, blog_index):
+        """A dedicated approval workflow on the Blog section, reviewed by Moderators."""
+        workflow, created = Workflow.objects.get_or_create(name="Blog review")
+        if created:
+            task = GroupApprovalTask.objects.create(name="Blog moderators approval")
+            task.groups.set(Group.objects.filter(name="Moderators"))
+            WorkflowTask.objects.create(workflow=workflow, task=task, sort_order=0)
+        WorkflowPage.objects.update_or_create(
+            page=blog_index, defaults={"workflow": workflow}
+        )
+        self.stdout.write(
+            self.style.SUCCESS("Blog section uses the 'Blog review' workflow.")
         )

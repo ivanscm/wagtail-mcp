@@ -84,7 +84,7 @@ class Person(
         APIField("first_name", writable=True),
         APIField("last_name", writable=True),
         APIField("job_title", writable=True),
-        APIField("image"),
+        APIField("image", writable=True),
     ]
 
     @property
@@ -146,7 +146,7 @@ class BlogPersonRelationship(Orderable, models.Model):
 
     api_fields = [
         APIField("page"),
-        APIField("person"),
+        APIField("person", writable=True),
     ]
 
 
@@ -195,13 +195,13 @@ class BlogPage(Page):
     ]
 
     api_fields = [
-        APIField("introduction"),
-        APIField("image"),
-        APIField("body"),
-        APIField("subtitle"),
-        APIField("tags"),
-        APIField("date_published"),
-        APIField("blog_person_relationship"),
+        APIField("introduction", writable=True),
+        APIField("image", writable=True),
+        APIField("body", writable=True),
+        APIField("subtitle", writable=True),
+        APIField("tags", writable=True),
+        APIField("date_published", writable=True),
+        APIField("blog_person_relationship", writable=True),
     ]
 
     def authors(self):
@@ -240,8 +240,10 @@ class BlogIndexPage(RoutablePageMixin, Page):
         FieldPanel("image"),
     ]
 
+    # `image` is deliberately left read-only, to exercise how clients handle
+    # fields that the write schema omits.
     api_fields = [
-        APIField("introduction"),
+        APIField("introduction", writable=True),
         APIField("image"),
     ]
 
