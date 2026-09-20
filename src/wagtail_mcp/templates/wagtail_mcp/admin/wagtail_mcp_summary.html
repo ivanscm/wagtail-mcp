@@ -1,0 +1,10 @@
+{% load i18n wagtailadmin_tags %}
+<li>
+    {% icon name="code" %}
+    {% url 'wagtail_mcp' as mcp_url %}
+    {% if mcp_url %}
+        <a href="{{ mcp_url }}">{% trans "MCP server" %}</a>
+    {% else %}
+        <span>{% trans "MCP server" %}</span>
+    {% endif %}
+</li>
