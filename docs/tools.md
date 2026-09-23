@@ -97,7 +97,7 @@ Upload notes: `content_base64` must be actual file bytes in base64 (not a URL
 or path). `content_type` is inferred from the extension (`.png`, `.jpg`,
 `.jpeg`, `.gif`, `.webp`, `.svg`) when omitted. Image bytes are validated by
 Pillow — a non-image upload 422s. **Tags are not writable** through the v3
-write schema (see [api-feedback](api-feedback.md)); they're read-only under
+write schema (see [API feedback](contributing/api-feedback.md)); they're read-only under
 `meta`.
 
 ## Documents (5)
@@ -155,7 +155,7 @@ incompatible type returns 422 from the API, which the tool passes through.
 | `redirects_update` | WRITE | Update a redirect; target is preserved unless changed. | — |
 | `redirects_delete` | DEST | Permanently delete a redirect. | — |
 
-Notes: old paths are normalized (trailing slash stripped) on create/update.
+Notes: list and find are anonymous in the v3 API; create, update, and delete need a token with add, change, or delete permission. Old paths are normalized (trailing slash stripped) on create/update.
 `redirects_update` preserves the existing link/page target unless you pass a
 new one; passing `redirect_page_id` clears an external link and vice versa.
 `redirects_list` has no text search (CRUD only).

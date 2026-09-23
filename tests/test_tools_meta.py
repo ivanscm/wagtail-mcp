@@ -8,7 +8,7 @@ result serialization together.
 
 import pytest
 
-from test_protocol import call_tool, call_tool_raw
+from test_protocol import call_tool, call_tool_raw, post
 
 
 @pytest.mark.django_db(transaction=True)
@@ -86,7 +86,6 @@ def test_tool_inventory_counts_meta_tools(client, token):
     # Confirm exactly the tools registered so far (5 meta + 17 page + 5 image
     # + 5 document + 12 snippet tools; Task 14 adds the full 57-tool inventory
     # test).
-    from test_protocol import post
 
     response = post(
         client, {"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}}, token

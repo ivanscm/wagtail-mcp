@@ -4,17 +4,10 @@ from django.http import HttpRequest
 from wagtail.models import APIToken
 
 
-# The plaintext bearer token for the request currently being served, made
-# available to the dispatch layer without threading it through every call.
-# Set by the MCP endpoint view around each request; defaults to None.
+# Request-scoped bearer token forwarded to in-process dispatch.
 current_token: ContextVar[str | None] = ContextVar("wagtail_mcp_token", default=None)
 
-# The ``Host`` header (e.g. ``cms.example.com`` or ``cms.example.com:8000``) of
-# the request currently being served, made available to the dispatch layer so
-# it can forward the real host into the in-process Django test client. Without
-# this, absolute API URLs (``meta.detail_url``/``meta.html_url``) would resolve
-# to the test client's hardcoded ``testserver`` host. Set by the MCP endpoint
-# view around each request; defaults to None.
+# Caller ``Host`` for the in-process client. See docs/contributing/architecture.md.
 current_host: ContextVar[str | None] = ContextVar("wagtail_mcp_host", default=None)
 
 

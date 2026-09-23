@@ -1,7 +1,8 @@
 import pytest
 
-from test_protocol import call_tool, call_tool_raw
+from test_protocol import TOOLS_LIST, call_tool, call_tool_raw, post
 from wagtail.images import get_image_model
+from wagtail.models import Collection
 
 
 pytestmark = pytest.mark.django_db(transaction=True)
@@ -20,7 +21,6 @@ def collection_baseline():
     assumes, so each test reseeds it here (mirroring the wagtailcore 0025
     migration).
     """
-    from wagtail.models import Collection
 
     if not Collection.objects.filter(depth=1).exists():
         Collection.objects.create(name="Root", path="0001", depth=1, numchild=0)
@@ -29,7 +29,6 @@ def collection_baseline():
 def test_image_tools_annotations(client, token):
     # Read tools must be advertised readOnly, write tools writable, delete
     # destructive — MCP annotations that drive client UX (confirm prompts).
-    from test_protocol import TOOLS_LIST, post
 
     response = post(client, TOOLS_LIST, token)
     tools = {

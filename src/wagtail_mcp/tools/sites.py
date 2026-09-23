@@ -1,10 +1,4 @@
-"""Site tools for the Wagtail v3 API.
-
-Thin wrappers over ``dispatch.call_operation`` that flatten create/update
-arguments and shape site responses for agents. Sites require a bearer token;
-site permission is model-wide (no per-instance ``view`` restriction for the
-superuser/token user). All auth/permissions live in the v3 API.
-"""
+"""Site tools. See docs/tools.md."""
 
 from wagtail_mcp import dispatch
 from wagtail_mcp.tools.common import (
@@ -17,9 +11,7 @@ from wagtail_mcp.tools.common import (
 )
 
 
-#: Response fields (SiteSchema has no ``meta`` block) worth surfacing in
-#: *list* items. Detail responses are passed through untrimmed (see
-#: ``shape_detail``).
+# List-item fields retained for sites (no ``meta`` block).
 SITE_FIELDS = (
     "id",
     "hostname",
@@ -115,9 +107,7 @@ def register(server):
         site_name: str | None = None,
         is_default_site: bool | None = None,
     ) -> dict[str, object]:
-        # v3 ``sites_update`` is a full PUT: ``hostname`` and ``root_page_id``
-        # are required in the body. Fetch the current site and merge only the
-        # caller-supplied fields so a partial update behaves like a PATCH.
+        # v3 requires a full body; merge unchanged fields for PATCH semantics.
         current = dispatch.call_operation(
             "sites_detail", path_params={"site_id": site_id}
         )

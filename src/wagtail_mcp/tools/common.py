@@ -5,6 +5,7 @@ import functools
 from django.conf import settings
 from mcp.server.mcpserver.exceptions import ToolError
 from mcp.types import ToolAnnotations
+from wagtail.models import Collection
 
 from wagtail_mcp.errors import APIError, format_api_error
 
@@ -110,9 +111,7 @@ def shape_list(data, meta_keys, limit=None, offset=0):
     return {"count": count, "next_offset": next_offset, "items": items}
 
 
-#: Suffix → MIME type for uploads whose ``content_type`` is not supplied.
-#: Covers the image/document formats Wagtail's upload forms accept; anything
-#: else must be supplied explicitly by the caller.
+# MIME types inferred from upload filenames.
 _EXTENSION_CONTENT_TYPES = {
     ".gif": "image/gif",
     ".jpeg": "image/jpeg",
@@ -193,7 +192,6 @@ def _root_collection_id():
     the migration-seeded root collection directly via the ORM. This is the
     per-project default Wagtail's own upload forms fall back to.
     """
-    from wagtail.models import Collection
 
     return Collection.get_first_root_node().id
 

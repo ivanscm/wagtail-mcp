@@ -39,7 +39,7 @@ in `local/superpowers/api-feedback-notes.md`; this is the cleaned-up copy.
   whitelister should accept the markdown-produced spelling, so round-tripping
   markdown ↔ DB HTML preserves image embeds.
 - **wagtail-mcp:** documents `db_html` bodies via the escape hatch as the
-  working path (see `docs/escape-hatch.md`).
+  working path (see the [escape hatch](../escape-hatch.md)).
 
 ## Write schemas only expose `api_fields` marked `writable=True`
 

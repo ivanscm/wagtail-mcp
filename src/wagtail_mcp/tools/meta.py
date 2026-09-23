@@ -1,9 +1,4 @@
-"""Meta tools: whoami, schema discovery, and the OpenAPI escape hatch.
-
-These are the smallest, most discoverable tools an agent reaches for first,
-and the only place the escape hatch (``api_call``/``api_schema``) lives. All
-read-only except ``api_call``, which can drive any v3 mutation.
-"""
+"""whoami, schema discovery, and the ``api_call`` / ``api_schema`` escape hatch."""
 
 from wagtail_mcp import dispatch
 from wagtail_mcp.errors import APIError
@@ -97,6 +92,5 @@ def register(server):
             query=query,
             body=body,
         )
-        # ``call_operation`` returns None for 204/empty responses; normalise to a
-        # JSON object so the tool result stays a dict.
+        # Normalize 204 responses to a JSON object.
         return result or {}

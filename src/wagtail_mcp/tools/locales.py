@@ -1,9 +1,4 @@
-"""Locale tools for the Wagtail v3 API.
-
-Thin wrappers over ``dispatch.call_operation`` that flatten create/update
-arguments and shape locale responses for agents. Locales require a bearer
-token. All auth/permissions live in the v3 API.
-"""
+"""Locale tools. See docs/tools.md."""
 
 from wagtail_mcp import dispatch
 from wagtail_mcp.tools.common import (
@@ -17,12 +12,10 @@ from wagtail_mcp.tools.common import (
 )
 
 
-#: ``meta`` keys worth surfacing from a locale *list* item. LocaleSchema
-#: extends ``BaseSchema`` so responses carry a ``meta`` block (type/warnings).
-#: Detail responses are passed through untrimmed (see ``shape_detail``).
+# List-item metadata retained for locale tools.
 LOCALE_META_KEYS = ("type",)
 
-#: Atomic locale response fields (outside ``meta``).
+# List-item fields outside ``meta``.
 LOCALE_FIELDS = (
     "id",
     "language_code",

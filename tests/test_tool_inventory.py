@@ -9,6 +9,9 @@ import pytest
 
 from test_protocol import TOOLS_LIST, post
 
+from wagtail_mcp.server import get_server
+from wagtail_mcp.tools.common import max_limit_hint
+
 
 #: Full 60-tool inventory, grouped by source module / v3 operation prefix.
 EXPECTED_TOOLS = {
@@ -158,7 +161,6 @@ def test_paginated_tool_descriptions_follow_the_site_limit_max_setting(
     A project that lowers ``WAGTAILAPI_LIMIT_MAX`` gets its own cap baked into
     the tool descriptions, so agents never exceed it.
     """
-    from wagtail_mcp.server import get_server
 
     settings.WAGTAILAPI_LIMIT_MAX = 5
     # Tool descriptions are frozen into the per-process server singleton;
@@ -178,7 +180,6 @@ def test_paginated_tool_descriptions_follow_the_site_limit_max_setting(
 
 def test_max_limit_hint_without_cap(settings):
     """``WAGTAILAPI_LIMIT_MAX = None`` disables the cap; the hint says so."""
-    from wagtail_mcp.tools.common import max_limit_hint
 
     settings.WAGTAILAPI_LIMIT_MAX = None
     assert max_limit_hint() == "`limit` has no maximum."

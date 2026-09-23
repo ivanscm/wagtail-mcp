@@ -2,7 +2,7 @@ import itertools
 
 import pytest
 
-from test_protocol import call_tool, call_tool_raw
+from test_protocol import TOOLS_LIST, call_tool, call_tool_raw, post
 from wagtail.models import Locale, Page
 
 from wagtail_mcp.test.models import ContentPage
@@ -286,7 +286,6 @@ def test_pages_actions_delete_removes_page(client, token, site_root):
 
 
 def test_page_write_tools_annotations(client, token, site_root):
-    from test_protocol import TOOLS_LIST, post
 
     response = post(client, TOOLS_LIST, token)
     tools = {

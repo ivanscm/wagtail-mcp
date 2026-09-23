@@ -1,9 +1,4 @@
-"""Document tools for the Wagtail v3 API.
-
-Thin wrappers over ``dispatch.call_operation`` that flatten create/update
-arguments and shape document responses for agents. Uploads arrive as base64
-and are decoded + MIME-typed by ``tools.common.decode_upload``.
-"""
+"""Document tools. See docs/tools.md."""
 
 from wagtail_mcp import dispatch
 from wagtail_mcp.tools.common import (
@@ -19,8 +14,7 @@ from wagtail_mcp.tools.common import (
 )
 
 
-#: Document *list* item ``meta`` keys worth surfacing to an agent. Detail
-#: responses are passed through untrimmed (see ``shape_detail``).
+# List-item metadata retained for document tools.
 DOCUMENT_META_KEYS = ("type", "detail_url", "download_url", "tags")
 
 
@@ -39,7 +33,7 @@ def register(server):
         limit: int = 20,
         offset: int = 0,
     ) -> dict[str, object]:
-        query = {"limit": limit, "offset": offset}
+        query: dict[str, int | str] = {"limit": limit, "offset": offset}
         if search is not None:
             query["search"] = search
         data = dispatch.call_operation("documents_list", query=query)

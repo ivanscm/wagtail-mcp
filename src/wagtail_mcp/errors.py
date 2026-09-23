@@ -1,20 +1,6 @@
-"""RFC 7807 (application/problem+json) error translation for wagtail-mcp.
+"""Turn v3 RFC 7807 problem documents into MCP tool errors.
 
-The v3 API surfaces failures as RFC 7807 problem documents (see Wagtail's
-``wagtail/api/v3/errors.py``):
-
-    {
-        "type": "about:blank",
-        "title": "Unprocessable Entity",
-        "status": 422,
-        "detail": "Validation failed",
-        "errors": [{"loc": ["body", "title"], "msg": "field required"}],
-    }
-
-This module wraps that envelope in a ``APIError`` exception, and formats it
-into a single, agent-actionable string for MCP tool errors. Problem documents
-are not guaranteed to carry every key (unhandled exceptions or bare status
-codes may omit ``detail`` or ``errors``), so the formatter degrades gracefully.
+See docs/contributing/architecture.md.
 """
 
 from __future__ import annotations
@@ -22,8 +8,7 @@ from __future__ import annotations
 from typing import Any
 
 
-# One-line hints, keyed by HTTP status code and appended to the formatted message
-# so the model knows how to recover rather than just that the call failed.
+# Recovery hints appended to formatted API errors.
 _STATUS_HINTS: dict[int, str] = {
     401: "Check that your Wagtail API token is valid, un-revoked, and belongs to an active user.",
     403: "The authenticated user does not have permission to perform this operation. Grant the relevant permission in Wagtail, or use a token for a user that does.",

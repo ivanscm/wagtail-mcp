@@ -1,22 +1,8 @@
-"""In-process dispatch against the Wagtail v3 API ("client in code").
-
-Tool calls funnel through here: each call maps an ``operation_id`` to an
-HTTP method + path, then dispatches it against the project's mounted v3 API
-through Django's test ``Client`` — a real ``HttpRequest`` through the full
-request pipeline (auth callbacks, permission checks, exception handlers,
-action classes, response serialization), without going over the network. The
-request is made as the user whose ``Authorization: Bearer`` token is
-forwarded, so v3 remains the single authority for authentication and
-permissions.
-
-Django's test ``Client`` is used rather than django-ninja's ``TestClient``:
-the latter builds a request that Wagtail's page schemas cannot fully
-serialize in-process (page ``html_url`` resolution needs a request with a
-real host), while Django's client exercises the genuine WSGI-style path and
-handles redirects natively.
-"""
+"""In-process v3 API dispatch. See docs/contributing/architecture.md."""
 
 import functools
+
+from urllib.parse import urlencode
 
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.serializers.json import DjangoJSONEncoder
@@ -26,15 +12,10 @@ from wagtail_mcp import auth
 from wagtail_mcp.errors import APIError
 
 
-# Request bodies may contain non-{primitive} values (e.g. a ``datetime`` from a
-# pydantic schema default); Django's JSON encoder serializes those cleanly.
+# Encode non-primitive schema defaults with Django's JSON encoder.
 _json_dumps = DjangoJSONEncoder().encode
 
-# URL mount prefix for the v3 API. wagtail-mcp currently requires the v3 API
-# to be mounted at "/api/v3/" (no auto-detection). It is used to fetch the
-# OpenAPI document; operation paths are then dispatched using the schema's own
-# absolute paths, which already carry this prefix and which the test Client
-# needs intact.
+# OpenAPI schema paths include the v3 mount prefix.
 MOUNT_PREFIX = "/api/v3/"
 
 
@@ -62,7 +43,6 @@ class DjangoClient:
         host=None,
         port=None,
     ):
-        from urllib.parse import urlencode
 
         verb = method.upper()
         if verb not in {"GET", "POST", "PUT", "PATCH", "DELETE"}:
@@ -83,9 +63,7 @@ class DjangoClient:
                     for name, value in headers.items()
                 }
             )
-        # The real caller host, forwarded so absolute API URLs (``detail_url`` /
-        # ``html_url``) resolve to the caller rather than ``testserver``.
-        # Django's test client reads these from ``META``/environ directly.
+        # Preserve the caller's host for absolute v3 API URLs.
         if host:
             client_kwargs["HTTP_HOST"] = host
         if port:
@@ -94,17 +72,13 @@ class DjangoClient:
             client_kwargs["data"] = _json_dumps(json)
             client_kwargs["content_type"] = "application/json"
         elif data is not None or FILES:
-            # Django's test client has no ``files=`` kwarg: file uploads are
-            # passed inline in the ``data`` mapping as ``SimpleUploadedFile``
-            # values. Merge form fields and files into a single mapping.
+            # Django test Client receives uploads in ``data``.
             merged = dict(data or {})
             if FILES:
                 merged.update(FILES)
             client_kwargs["data"] = merged
 
-        # Follow HTTP redirects transparently so ``pages_find`` (which the v3
-        # API answers with a 302 to the page-detail URL) works like a real
-        # HTTP client instead of surfacing a raw 302.
+        # Match an HTTP client by following API redirects.
         return call(path, follow=True, **client_kwargs)
 
 
@@ -249,10 +223,7 @@ def call_operation(
             },
         ) from None
     except (IndexError, ValueError) as exc:
-        # A malformed template (e.g. "{}" without a field, or an unmatched
-        # brace) raises IndexError/ValueError rather than KeyError. Surface
-        # these as clean APIErrors instead of leaking raw exceptions out of
-        # the tool.
+        # Normalize malformed internal path templates as API errors.
         raise APIError(
             500,
             {
@@ -274,11 +245,7 @@ def call_operation(
     if resolved_token:
         headers = {"Authorization": f"Bearer {resolved_token}"}
 
-    # Forward the request's real Host into the in-process client (see
-    # ``_host_parts``) so absolute API URLs (e.g. ``meta.detail_url``/
-    # ``meta.html_url``) resolve to the caller's host rather than Django's
-    # hardcoded ``testserver``, and host validation passes under strict
-    # ``ALLOWED_HOSTS``.
+    # Preserve the caller's host for absolute URLs and host validation.
     host_header, port = _host_parts()
 
     response = _client().request(

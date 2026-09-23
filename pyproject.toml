@@ -31,11 +31,7 @@ dependencies = [
     # https://github.com/wagtail/wagtail/wiki/Release-schedule
     # https://docs.wagtail.org/en/latest/releases/upgrading.html#compatible-django-python-versions
     "wagtail>=8.0",
-    # django-ninja arrives transitively via Wagtail (the v3 API it ships is built on it).
-    # wagtail-mcp dispatches tools in-process through Django's real test Client against
-    # the mounted URLconf (see wagtail_mcp/dispatch.py), so the ninja floor is effectively
-    # pinned by Wagtail's requirement — coordinate any bump there. mcp is pinned exactly
-    # (matches the vendored SDK v2.0.0-21 in local/deps); bumps are deliberate CHANGELOG entries.
+    # django-ninja arrives via Wagtail. Dispatch and the mcp pin: docs/contributing/architecture.md.
     "mcp==2.0.0",
 ]
 
@@ -45,11 +41,19 @@ Repository = "https://github.com/org-name-or-username/wagtail-mcp"
 Changelog = "https://github.com/org-name-or-username/wagtail-mcp/blob/main/CHANGELOG.md"
 Documentation = "https://github.com/org-name-or-username/wagtail-mcp/tree/main/docs"
 Issues = "https://github.com/org-name-or-username/wagtail-mcp/issues"
+
+[project.optional-dependencies]
+agent = [
+    "django-ag-ui>=0.61.0",
+    "pydantic-ai-slim[openai]>=2.45.0",
+    "uvicorn>=0.52.4",
+]
 # Add funding link if needed.
 # Funding = "https://github.com/org-name-or-username/wagtail-mcp"
 
 [dependency-groups]
 dev = [
+    "anyio>=4.14.2",
     "dj-database-url>=3.1.2",
     "pytest>=8.1.1",
     "pytest-cov>=7.1.0",
@@ -78,3 +82,4 @@ source-exclude = [
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "wagtail_mcp.test.settings"
 testpaths = ["tests", "src/wagtail_mcp/test/tests"]
+anyio_mode = "auto"

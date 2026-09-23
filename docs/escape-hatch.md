@@ -75,7 +75,7 @@ what you'd do for a revision surface with no curated tool.
 The curated `pages_create`/`pages_update` tools take `body_markdown`, which is
 wrapped as a Markdown envelope and converted server-side. **Markdown image
 embeds (`![alt](wagtail://image?id=N)`) are silently dropped by the v3 write
-sanitizer** (see [api-feedback](api-feedback.md)) — so to make an image
+sanitizer** (see [API feedback](contributing/api-feedback.md)) — so to make an image
 actually appear in a page body you must send the body as raw **DB HTML** via
 `api_call`.
 

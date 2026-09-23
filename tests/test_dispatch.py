@@ -8,7 +8,7 @@ import pytest
 from wagtail.images import get_image_model
 from wagtail.models import Page, Site
 
-from wagtail_mcp import dispatch
+from wagtail_mcp import auth, dispatch
 from wagtail_mcp.dispatch import call_operation, clear_caches, openapi, operation_map
 from wagtail_mcp.errors import APIError
 from wagtail_mcp.test.models import ContentPage
@@ -106,7 +106,6 @@ def test_openapi_forwards_current_host(settings):
     The dispatch layer must forward ``auth.current_host`` like
     ``call_operation()`` does.
     """
-    from wagtail_mcp import auth
 
     settings.ALLOWED_HOSTS = ["cms.example.com"]
     openapi.cache_clear()
@@ -302,7 +301,6 @@ def test_host_forwarding_controls_absolute_urls(token, settings, root_page):
     ``auth.current_host``) so absolute ``detail_url``/``html_url`` resolve to the
     caller rather than Django's hardcoded ``testserver`` host.
     """
-    from wagtail_mcp import auth
 
     settings.WAGTAILAPI_BASE_URL = None
     settings.ALLOWED_HOSTS = ["*"]

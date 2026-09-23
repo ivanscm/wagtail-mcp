@@ -1,18 +1,4 @@
-"""Generic snippet tools for the Wagtail v3 API.
-
-Snippet endpoints are keyed by a ``type`` path parameter: the model label
-(``app_label.ModelName``). Payload shapes are project-specific (they derive
-from each snippet model's ``api_fields``), so create/update take an opaque
-``data`` dict rather than typed arguments — the tool descriptions point the
-agent at ``schema_detail`` to discover the writable fields for a given type.
-
-Only snippet models with the relevant mixins expose the action/revision
-endpoints these tools wrap: publish/unpublish need ``DraftStateMixin``,
-revisions/revert need ``RevisionMixin``, and copy_for_translation needs
-``TranslatableMixin`` (plus internationalization enabled). Calling an action
-against an incompatible type returns a 422 from the API; we pass that through
-rather than re-deriving the type capability matrix here.
-"""
+"""Generic snippet tools, keyed by ``app_label.ModelName``. See docs/tools.md."""
 
 from wagtail_mcp import dispatch
 from wagtail_mcp.tools.common import (
@@ -26,10 +12,7 @@ from wagtail_mcp.tools.common import (
 )
 
 
-#: Meta keys worth keeping from snippet *list* items. ``type`` and
-#: ``detail_url`` are the only stable ones; the atomic fields differ per model
-#: (captured by ``trim`` which keeps ``id``/``name``/``label`` etc.). Detail
-#: responses are passed through untrimmed (see ``shape_detail``).
+# Stable list-item metadata across snippet models.
 SNIPPET_META_KEYS = ("type", "detail_url")
 
 

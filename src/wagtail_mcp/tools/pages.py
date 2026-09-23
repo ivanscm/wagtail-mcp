@@ -1,10 +1,4 @@
-"""Page tools for the Wagtail v3 API.
-
-Thin wrappers over ``dispatch.call_operation`` that flatten read/write
-arguments and shape responses for agents. Rely on the v3 API for auth and
-permissions (``dispatch`` forwards the bearer token); these tools only
-translate arguments and responses.
-"""
+"""Page tools. See docs/tools.md."""
 
 from wagtail_mcp import dispatch
 from wagtail_mcp.tools.common import (
@@ -18,8 +12,7 @@ from wagtail_mcp.tools.common import (
 )
 
 
-# Page meta keys worth exposing to an agent from a page list item. Detail
-# responses are passed through untrimmed (see ``shape_detail``).
+# List-item metadata retained for page tools.
 PAGE_LIST_META_KEYS = ("type", "slug", "locale", "html_url", "first_published_at")
 
 
@@ -43,11 +36,9 @@ def register(server):
     ) -> dict[str, object]:
         query = {"limit": limit, "offset": offset}
         if child_of is not None:
-            query["child_of"] = "root" if child_of == "root" else child_of
+            query["child_of"] = child_of
         if descendant_of is not None:
-            query["descendant_of"] = (
-                "root" if descendant_of == "root" else descendant_of
-            )
+            query["descendant_of"] = descendant_of
         if search is not None:
             query["search"] = search
         data = dispatch.call_operation("pages_list", query=query)
@@ -175,8 +166,7 @@ def _register_page_write_tools(server):
         meta = {"type": type, "parent_id": parent_id}
         if publish:
             meta["action"] = "publish"
-        # `fields` (type-specific write fields) goes in first so the typed
-        # arguments below — and the protected `meta` envelope — win on clashes.
+        # Typed arguments and ``meta`` override type-specific fields.
         body: dict = dict(fields or {})
         body["meta"] = meta
         body["title"] = title
@@ -225,17 +215,14 @@ def _register_page_write_tools(server):
         show_in_menus: bool | None = None,
         fields: dict | None = None,
     ) -> dict[str, object]:
-        # Learn the page's own content type so the update envelope's
-        # ``meta.type`` matches what v3's discriminated-union update schema
-        # expects.
+        # v3 requires the page's concrete type in the update envelope.
         current = dispatch.call_operation(
             "pages_detail", path_params={"page_id": page_id}, query={"version": "draft"}
         )
         meta = {"type": current["meta"]["type"]}
         if publish:
             meta["action"] = "publish"
-        # `fields` (type-specific write fields) goes in first so the typed
-        # arguments below — and the protected `meta` envelope — win on clashes.
+        # Typed arguments and ``meta`` override type-specific fields.
         body: dict = dict(fields or {})
         body["meta"] = meta
         if title is not None:

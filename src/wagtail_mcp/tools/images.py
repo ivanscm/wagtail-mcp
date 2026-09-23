@@ -1,10 +1,4 @@
-"""Image tools for the Wagtail v3 API.
-
-Thin wrappers over ``dispatch.call_operation`` that flatten create/update
-arguments and shape image responses for agents. Uploads arrive as base64 and
-are decoded + MIME-typed by ``tools.common.decode_upload``. All auth/permissions
-live in the v3 API (dispatch forwards the bearer token).
-"""
+"""Image tools. See docs/tools.md."""
 
 from wagtail_mcp import dispatch
 from wagtail_mcp.tools.common import (
@@ -20,8 +14,7 @@ from wagtail_mcp.tools.common import (
 )
 
 
-#: Image *list* item ``meta`` keys worth surfacing to an agent. Detail
-#: responses are passed through untrimmed (see ``shape_detail``).
+# List-item metadata retained for image tools.
 IMAGE_META_KEYS = ("type", "detail_url", "download_url", "tags")
 
 

@@ -1,6 +1,6 @@
 import pytest
 
-from test_protocol import call_tool, call_tool_raw
+from test_protocol import TOOLS_LIST, call_tool, call_tool_raw, post
 from wagtail.models import Locale
 
 from wagtail_mcp.test.models import DraftablePerson, Person
@@ -29,7 +29,6 @@ def locale_baseline():
 def test_snippet_tool_annotations(client, token):
     # Read tools advertised readOnly, writes writable, deletes destructive —
     # MCP annotations that drive client UX (confirm prompts).
-    from test_protocol import TOOLS_LIST, post
 
     response = post(client, TOOLS_LIST, token)
     tools = {

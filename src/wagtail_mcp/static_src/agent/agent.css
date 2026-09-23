@@ -1,0 +1,12 @@
+/* Size the chat. CopilotKit's own CSS stays under [data-copilotkit]. */
+.wagtail-mcp-agent {
+  display: flex;
+  flex-direction: column;
+  height: min(70vh, 40rem);
+  min-height: 20rem;
+}
+
+.wagtail-mcp-agent__chat {
+  flex: 1 1 auto;
+  min-height: 0;
+}

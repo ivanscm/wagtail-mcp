@@ -1,13 +1,10 @@
 # Wagtail MCP
 
-> 🚧 this is the first vibe-coded draft of an MCP server prototype for Wagtail. Proceed with caution! Until this is ready, you might prefer to use [wagtail-cli](https://github.com/wagtail/wagtail-cli). See [CMS with AI, not AI CMS: Wagtail 8.0’s new API](https://wagtail.org/blog/cms-with-ai-not-ai-cms-wagtail-80s-new-api/) for context.
+> 🚧🤖 this is an early vibe-coded prototype of an MCP server for Wagtail. Proceed with caution! Until this is ready, you might prefer to use the [wagtail-cli](https://github.com/wagtail/wagtail-cli). See [CMS with AI, not AI CMS: Wagtail 8.0’s new API](https://wagtail.org/blog/cms-with-ai-not-ai-cms-wagtail-80s-new-api/) for context.
 
-A Model Context Protocol (MCP) server for Wagtail, exposing the Wagtail v3 API
-as model-callable tools. Point a Claude/OpenCode/Hermes-style agent at a
-Wagtail site and let it read content, create pages, upload images, publish and
-revert — through the same authenticated operations the v3 API provides.
+A [Model Context Protocol (MCP)](https://modelcontextprotocol.io/docs/2026-07-28/getting-started/intro) server for Wagtail, exposing the Wagtail v3 API operations as model-callable tools.
 
-## What it gives you
+## Capabilities
 
 - **60 curated tools** covering the full shipped v3 operation surface: pages
   (incl. revisions, move/copy/revert, aliases, translations), images,
@@ -59,12 +56,16 @@ worked example an agent can follow.
 
 ## Documentation
 
+Using the package: [docs](docs/README.md).
+
 - [Getting started](docs/getting-started.md)
-- [Tool reference](docs/tools.md) — all 60 tools, grouped by resource.
-- [Configuration](docs/configuration.md) — settings, deployment, token security.
-- [Escape hatch](docs/escape-hatch.md) — `api_call` / `api_schema`.
+- [Tool reference](docs/tools.md)
+- [Configuration](docs/configuration.md)
+- [Admin agent](docs/admin-agent.md)
+- [Escape hatch](docs/escape-hatch.md)
 - [Limitations](docs/limitations.md)
-- [API feedback](docs/api-feedback.md)
+
+Changing the package: [contributing](docs/contributing/README.md).
 
 ## Supported versions
 
@@ -83,5 +84,4 @@ just lint
 just demo
 ```
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for the full contribution workflow,
-including the agent-behavior eval suite.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, tests, and releases.

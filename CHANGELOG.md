@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- Documentation is split into user guides and reference under `docs/`, and contributor notes under `docs/contributing/`.
+
+### Fixed
+
+- The admin agent is now fully opt-in: without the agent URLconf mount, no
+  agent UI appears in the Wagtail admin, and the admin homepage no longer
+  500s. `/admin/wagtail_mcp/agent/` renders setup instructions instead.
+
+### Added
+
+- Experimental admin agent: the MCP tools as a chat in the Wagtail admin, over AG-UI. Requires the `agent` extra, an ASGI server, and mounting the endpoint URLconf. See [docs/admin-agent.md](docs/admin-agent.md).
+
 ## [0.2.0] - 2026-09-18
 
 ### Added

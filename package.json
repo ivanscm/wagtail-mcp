@@ -4,10 +4,16 @@
   "version": "0.0.0-dev",
   "type": "module",
   "devDependencies": {
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
     "@wagtail/stylelint-config-wagtail": "^2.0.0",
+    "esbuild": "^0.28.2",
     "prettier": "^3.9.4",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
     "stylelint": "^17.14.0",
-    "stylelint-config-standard": "^40.0.0"
+    "stylelint-config-standard": "^40.0.0",
+    "typescript": "^7.0.2"
   },
   "devEngines": {
     "packageManager": {
@@ -15,9 +21,18 @@
     }
   },
   "scripts": {
+    "build:agent": "node src/wagtail_mcp/static_src/agent/build.mjs",
+    "watch:agent": "node src/wagtail_mcp/static_src/agent/build.mjs --watch",
+    "typecheck:agent": "tsc -p src/wagtail_mcp/static_src/agent/tsconfig.json",
     "lint": "npm run lint:format && npm run lint:css",
     "lint:format": "prettier --check \"**/?(.)*.{css,scss,mjs,js,ts,tsx,json,jsonc,yaml,yml}\"",
     "lint:css": "stylelint --allow-empty-input \"**/?(.)*.{css,scss}\"",
     "format": "prettier --write \"**/?(.)*.{css,scss,mjs,js,ts,tsx,json,jsonc,yaml,yml}\""
+  },
+  "dependencies": {
+    "@copilotkit/react-core": "^1.72.0"
+  },
+  "allowScripts": {
+    "esbuild@0.28.2": true
   }
 }

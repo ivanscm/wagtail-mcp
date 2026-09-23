@@ -1,12 +1,6 @@
-"""Django view exposing the wagtail-mcp MCP server over Streamable HTTP.
+"""Streamable HTTP endpoint for the MCP server.
 
-The MCP SDK's StreamableHTTP transport is ASGI-native. This view embeds it in a
-sync Django request/response cycle: for each POST we build a synthetic ASGI
-*scope* from the Django ``HttpRequest``, run one stateless
-``StreamableHTTPSessionManager`` per request (fresh instance + ``run()`` per
-request), and collect the ASGI response messages back into an ``HttpResponse``.
-Because each request uses its own stateless transport, there is no cross-request
-session state and the endpoint works identically under WSGI and ASGI.
+See docs/contributing/architecture.md.
 """
 
 from asgiref.sync import async_to_sync

@@ -3,15 +3,13 @@ from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 
 
-class WagtailMcpAppConfig(AppConfig):
+class WagtailMCPAppConfig(AppConfig):
     label = "wagtail_mcp"
     name = "wagtail_mcp"
     verbose_name = "Wagtail MCP"
 
     def ready(self):
-        # wagtail-mcp dispatches tool calls through the Wagtail v3 API in
-        # process, so the API must be installed in the project. Fail fast with
-        # a clear message rather than surfacing an obscure error mid-request.
+        # Dispatch depends on the Wagtail v3 API.
         if "wagtail.api.v3" not in settings.INSTALLED_APPS:
             raise ImproperlyConfigured(
                 "wagtail-mcp requires the Wagtail v3 API. Add 'wagtail.api.v3' to "

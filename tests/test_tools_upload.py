@@ -9,6 +9,8 @@ import types
 
 import pytest
 
+from wagtail.models import Collection
+
 from wagtail_mcp.errors import APIError
 from wagtail_mcp.tools.common import perform_upload
 
@@ -24,7 +26,6 @@ def collection_baseline():
     migration-seeded root collection that ``_root_collection_id()`` assumes,
     so each test reseeds it here (mirroring the wagtailcore 0025 migration).
     """
-    from wagtail.models import Collection
 
     if not Collection.objects.filter(depth=1).exists():
         Collection.objects.create(name="Root", path="0001", depth=1, numchild=0)
@@ -54,7 +55,6 @@ def _dispatch_mock(record):
 
 def test_upload_retries_with_root_collection_when_required():
     """A 422 'collection required' error on a bare upload triggers a retry."""
-    from wagtail.models import Collection
 
     err = APIError(422, {"errors": [{"loc": ["collection"], "type": "required"}]})
     dispatch, calls = _dispatch_mock([err, {"id": 1, "title": "Pixel"}])

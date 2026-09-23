@@ -1,0 +1,12 @@
+{% extends "wagtailadmin/generic/base.html" %}
+{% load i18n wagtailadmin_tags %}
+
+{% block titletag %}{% trans "Wagtail MCP agent" %}{% endblock %}
+
+{% block main_header %}
+    {% include "wagtailadmin/shared/header.html" with title="Wagtail MCP agent" subtitle="Experimental AI assistant for your Wagtail site (prototype)" icon_name="comment" %}
+{% endblock %}
+
+{% block main_content %}
+    {% include "wagtail_mcp/admin/includes/agent_mount.html" %}
+{% endblock %}

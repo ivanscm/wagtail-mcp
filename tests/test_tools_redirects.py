@@ -2,7 +2,7 @@ import itertools
 
 import pytest
 
-from test_protocol import call_tool, call_tool_raw
+from test_protocol import TOOLS_LIST, call_tool, call_tool_raw, post
 from wagtail.models import Locale, Page, Site
 
 from wagtail_mcp.test.models import ContentPage
@@ -46,7 +46,6 @@ def created_redirect(client, token, target_page):
 
 
 def test_redirect_tools_annotations(client, token):
-    from test_protocol import TOOLS_LIST, post
 
     response = post(client, TOOLS_LIST, token)
     tools = {

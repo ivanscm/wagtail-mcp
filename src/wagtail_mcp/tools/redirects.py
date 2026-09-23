@@ -1,12 +1,4 @@
-"""Redirect tools for the Wagtail v3 API.
-
-Thin wrappers over ``dispatch.call_operation`` that flatten create/update
-arguments and shape redirect responses for agents. Redirects wrap ``redirect``
-(old path → target) and sit on ``wagtail.contrib.redirects``; reads are public
-in the v3 API while writes require a bearer token with ``add``/``change``/
-``delete`` permission. All auth/permissions live in the v3 API (dispatch
-forwards the bearer token).
-"""
+"""Redirect tools. See docs/tools.md."""
 
 from wagtail_mcp import dispatch
 from wagtail_mcp.tools.common import (
@@ -19,9 +11,7 @@ from wagtail_mcp.tools.common import (
 )
 
 
-#: Flat response fields (RedirectSchema has no ``meta`` block) worth surfacing
-#: in *list* items. Detail responses are passed through untrimmed (see
-#: ``shape_detail``).
+# List-item fields retained for redirects (no ``meta`` block).
 REDIRECT_FIELDS = (
     "id",
     "old_path",
@@ -137,10 +127,7 @@ def register(server):
         site_id: int | None = None,
         is_permanent: bool | None = None,
     ) -> dict[str, object]:
-        # The v3 ``redirects_update`` schema requires only ``old_path`; the
-        # target fields are optional (defaulting to null/empty). Fetch the
-        # current redirect and merge so that a partial update preserves the
-        # existing target instead of silently clearing it.
+        # Fetch and merge required fields to preserve an unchanged target.
         current = dispatch.call_operation(
             "redirects_detail", path_params={"redirect_id": redirect_id}
         )

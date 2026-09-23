@@ -1,112 +1,27 @@
 # Contributing guidelines
 
-Thank you for your interest in this project! We welcome all contributions, from bug reports to new features that align with [our roadmap](ROADMAP.md). Here are instructions for anyone wishing to contribute.
+Thank you for your interest in this project. Bug reports and changes that fit
+the [roadmap](ROADMAP.md) are welcome.
 
 ## Installation
 
-The repo includes a simple demo application that can be run to develop the package itself. Follow the instructions below for a local setup.
-
-First, clone the repo:
+The repo includes a demo Wagtail site for working on the package. Requirements:
+[`uv`](https://github.com/astral-sh/uv), [`just`](https://github.com/casey/just),
+[`prek`](https://prek.j178.dev/).
 
 ```sh
 git clone git+https://github.com/org-name-or-username/wagtail-mcp
 cd wagtail-mcp
-```
-
-> Requirements: [`uv`](https://github.com/astral-sh/uv), [`just`](https://github.com/casey/just), [`prek`](https://prek.j178.dev/)
-
-Then you can install the dependencies and run the demo app:
-
-```sh
 just install
 just demo
 ```
 
-## Quality assurance
+`just help` lists the other recipes. Run `just lint` and `just test` before
+considering work complete.
 
-Here are the available scripts for the project:
+## Further reading
 
-```sh
-just clean-pyc         # Remove all the Python and Node.js cache files.
-just coverage          # Run tests with coverage.
-just demo              # Run the demo application.
-just eval              # Run the Promptfoo eval suite against the demo site.
-just eval-init         # Install promptfoo + OpenCode CLI + the OpenCode SDK (globally).
-just eval-setup        # Reset the demo DB to fixtures + a fresh/stable API token for evals.
-just eval-view         # Open the promptfoo dashboard for the latest eval run.
-just format            # Run all formatters.
-just format-client     # Format the client code with Prettier.
-just format-server     # Format the server code with uv.
-just help              # List all the justfile recipes.
-just install           # Install the dependencies.
-just lint              # Run all linters.
-just lint-client       # Lint the client code with Prettier.
-just lint-server       # Lint the server code with uv.
-just load_initial_data # Load the initial data into the database.
-just migrate           # Make migrations and migrate the database.
-just runserver         # Run the development server at the given host and port.
-just shell             # Open a shell to the demo application.
-just test              # Run tests with pytest.
-```
-
-## Agent-behavior evals
-
-Beyond unit/integration tests, wagtail-mcp verifies that a real model actually
-*uses* the tools, via a Promptfoo eval suite that drives the demo site through
-the OpenCode SDK (`evals/`). This is the layer that proves the curated tools
-are ergonomic enough for an agent to reach for, not just callable.
-
-Setup and run:
-
-```sh
-just eval-init    # installs promptfoo + the OpenCode CLI + @opencode-ai/sdk globally
-just eval-setup   # resets the demo DB to fixtures and issues a fresh API token
-just demo         # run the demo site the suite runs against
-just eval         # run the suite
-just eval --repeat 3   # agent runs are noisy; repeat before trusting a delta
-just eval-view    # dashboard for the latest run
-```
-
-The suite is not part of the default `just test`/CI gate: it is token-heavy,
-noisy, and requires a live demo server plus an API key.
-
-**Requirements** (`just eval-setup` and `just eval` document the exact env
-vars):
-
-- `TENSORX_API_KEY` — the model under test and the rubric grader both run on
-  TensorX.
-- A running demo site (the demo API token in `demo/.demo_token` is read by the
-  graders to verify post-conditions through the v3 API).
-
-Note: the eval commands install tooling **globally** (promptfoo, OpenCode CLI,
-`@opencode-ai/sdk`), deliberately kept out of `package.json` so contributors
-who never run evals don't pay for them.
-
-## Writing tests
-
-There is a simple test app in `tests/`. Write your test modules there alongside the existing files.
-
-## Continuous integration
-
-The project uses GitHub Actions for CI. On every push and pull request, the CI will:
-
-- Run linters (Ruff, prek, Prettier).
-- Run tests with coverage.
-- Run tests against the lowest supported dependency versions.
-- Run tests against the latest dependency versions.
-- Run tests against a compatibility matrix of Python, Django, and Wagtail versions.
-
-There is also a nightly job that tests against the latest development version of Wagtail, so we catch compatibility issues early.
-
-## Code review
-
-Create a pull request with your changes so that it can be code reviewed by a maintainer. Ensure that you give a summary with the purpose of the change and any steps that the reviewer needs to take to test your work. Please make sure to provide unit tests for your work.
-
-## Releases
-
-On the `main` branch:
-
-1. Update the version number in `pyproject.toml`.
-2. Update the [CHANGELOG](CHANGELOG.md) and [ROADMAP](ROADMAP.md).
-3. Commit and tag the release. (`git commit -m "Release v0.1.1" & git tag -a v0.1.1 -m "Release v0.1.1" && git push --tags`)
-4. Create a GitHub release from the tag. The CI will automatically build and publish the package to PyPI.
+- [Tasks](docs/contributing/tasks.md) — tests, adding a tool, agent-behavior evals, review.
+- [Architecture](docs/contributing/architecture.md) — dispatch, transport, the admin agent.
+- [Maintenance](docs/contributing/maintenance.md) — CI and releases.
+- [API feedback](docs/contributing/api-feedback.md) — notes for the Wagtail v3 API.

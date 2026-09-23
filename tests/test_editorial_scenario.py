@@ -20,7 +20,7 @@ import pytest
 
 from test_protocol import call_tool, call_tool_raw
 from wagtail.images import get_image_model
-from wagtail.models import Locale, Page, Site
+from wagtail.models import Collection, Locale, Page, Site
 
 from wagtail_mcp.test.models import ContentPage
 
@@ -46,7 +46,6 @@ def wagtail_baseline():
     # ``transaction=True`` also wipes the migration-seeded root Collection,
     # which ``Image.get_root_collection_id`` requires (mirroring the
     # collection_baseline fixture in test_tools_images.py).
-    from wagtail.models import Collection
 
     if not Collection.objects.filter(depth=1).exists():
         Collection.objects.create(name="Root", path="0001", depth=1, numchild=0)

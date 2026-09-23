@@ -2,8 +2,9 @@ import base64
 
 import pytest
 
-from test_protocol import call_tool, call_tool_raw
+from test_protocol import TOOLS_LIST, call_tool, call_tool_raw, post
 from wagtail.documents import get_document_model
+from wagtail.models import Collection
 
 
 pytestmark = pytest.mark.django_db(transaction=True)
@@ -22,14 +23,12 @@ def collection_baseline():
     assumes, so each test reseeds it here (mirroring the wagtailcore 0025
     migration).
     """
-    from wagtail.models import Collection
 
     if not Collection.objects.filter(depth=1).exists():
         Collection.objects.create(name="Root", path="0001", depth=1, numchild=0)
 
 
 def test_document_tools_annotations(client, token):
-    from test_protocol import TOOLS_LIST, post
 
     response = post(client, TOOLS_LIST, token)
     tools = {
@@ -154,7 +153,6 @@ def test_documents_detail_missing_is_error(client, token):
 
 def test_documents_create_passes_collection_id_through(client, token):
     """An explicit ``collection_id`` is forwarded and stored on the document."""
-    from wagtail.models import Collection
 
     root = Collection.get_first_root_node()
     child = root.add_child(name="Reports")

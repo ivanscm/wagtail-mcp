@@ -1,0 +1,13 @@
+{% load static %}
+{% if request.user.is_staff %}
+    {# Empty unless the project mounted wagtail_mcp.agent.urls. #}
+    {% url 'wagtail_mcp_agent:endpoint' as agent_endpoint %}
+    {% if agent_endpoint %}
+        <div
+            id="wagtail-mcp-agent-root"
+            data-endpoint="{{ agent_endpoint }}"
+            data-csrf-token="{{ csrf_token }}"
+        ></div>
+        <script type="module" src="{% static 'wagtail_mcp/js/agent.js' %}"></script>
+    {% endif %}
+{% endif %}

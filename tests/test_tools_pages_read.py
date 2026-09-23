@@ -2,7 +2,7 @@ import itertools
 
 import pytest
 
-from test_protocol import call_tool, call_tool_raw
+from test_protocol import TOOLS_LIST, call_tool, call_tool_raw, post
 from wagtail.models import Locale, Page, Site
 
 from wagtail_mcp.test.models import ContentPage
@@ -46,7 +46,6 @@ def site_root(wagtail_baseline):
 def test_page_tools_are_readonly(client, token):
     # Read tools must be advertised as readOnly (MCP annotation), which drives
     # safe client UX (no confirmation prompts). Checked over tools/list.
-    from test_protocol import TOOLS_LIST, post
 
     response = post(client, TOOLS_LIST, token)
     tools = response.json()["result"]["tools"]

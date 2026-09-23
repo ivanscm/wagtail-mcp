@@ -2,7 +2,7 @@ import itertools
 
 import pytest
 
-from test_protocol import call_tool, call_tool_raw
+from test_protocol import TOOLS_LIST, call_tool, call_tool_raw, post
 from wagtail.models import Locale, Page, Site
 
 
@@ -30,7 +30,6 @@ def root_page_id(wagtail_baseline):
 
 
 def test_site_tools_annotations(client, token):
-    from test_protocol import TOOLS_LIST, post
 
     response = post(client, TOOLS_LIST, token)
     tools = {

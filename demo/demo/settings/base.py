@@ -91,6 +91,11 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "demo.wsgi.application"
 
+# The admin agent's AG-UI endpoint streams SSE responses; ASGI is the
+# deployment-shape server (WSGI_APPLICATION stays intact for WSGI-only
+# tooling). See demo/demo/asgi.py and `just runserver-asgi`.
+ASGI_APPLICATION = "demo.asgi.application"
+
 
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases

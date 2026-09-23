@@ -72,6 +72,17 @@ migrate:
 runserver:
     uv run ./demo/manage.py runserver
 
+
+# Run the demo under ASGI (uvicorn) so the admin agent's SSE endpoint
+# streams incrementally. The agent is at /admin/wagtail_mcp/agent/.
+runserver-asgi:
+    cd demo && uv run uvicorn demo.asgi:application --reload --port 8000
+
+# Build the admin agent's frontend bundle (owned by the frontend session;
+# see package.json's build:agent script).
+build-agent-js:
+    npm run build:agent
+
 # Load the initial data into the database.
 load_initial_data:
     uv run ./demo/manage.py load_initial_data
